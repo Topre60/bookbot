@@ -222,12 +222,19 @@ svg { display: block; }
 .tip p { margin: 0; flex: 1; }
 .tip button { border: 0; background: transparent; color: var(--accent); font-weight: 700; padding: 0; }
 
-/* keyboard open on a phone: give the page every pixel */
-.kb .subbar, .kb #helpBtn, .kb #themeBtn, .kb .tip { display: none !important; }
-.kb .top { padding-top: calc(env(safe-area-inset-top, 0px) + 4px); padding-bottom: 4px; }
-.kb .title-input { font-size: 1.05rem; }
+/* typing on a phone: the keyboard owns the bottom of the screen, so the tools move to the top */
+.kb .subbar, .kb #helpBtn, .kb #themeBtn, .kb .tip,
+.typing .subbar, .typing #helpBtn, .typing #themeBtn, .typing .tip { display: none !important; }
+.kb .top, .typing .top { padding-top: calc(env(safe-area-inset-top, 0px) + 4px); padding-bottom: 4px; }
+.kb .title-input, .typing .title-input { font-size: 1.05rem; }
+.typing .top { order: -2; }
+.typing .dock {
+  order: -1; border-top: 0; border-bottom: 1px solid var(--line);
+  padding: 6px 0 8px; box-shadow: 0 6px 16px rgba(0, 0, 0, .06);
+}
+.typing .page { padding-top: 16px; }
 .only-kb { display: none !important; }
-.kb .only-kb { display: inline-flex !important; }
+.kb .only-kb, .typing .only-kb { display: inline-flex !important; }
 .tool.icon { padding: 0; width: 44px; justify-content: center; }
 .tool:disabled { opacity: .4; }
 
@@ -847,7 +854,15 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     var b = curBlock();
     if (!b) return;
     var r = b.getBoundingClientRect(), sr = $("scroll").getBoundingClientRect();
-    if (r.bottom > sr.bottom - 24) $("scroll").scrollTop += r.bottom - sr.bottom + 60;
+    var bottom = sr.bottom;
+    if (document.documentElement.classList.contains("typing")) {
+      // the keyboard may cover the lower half without telling us: keep the line in the top part
+      var vv = window.visualViewport;
+      var seen = vv && vv.height < (window.innerHeight || vv.height) - 100 ? vv.height : sr.top + (sr.bottom - sr.top) * 0.36;
+      bottom = Math.min(bottom, seen);
+    }
+    var line = Math.min(r.height, 60);
+    if (r.top + line > bottom - 16) $("scroll").scrollTop += r.top + line - bottom + 48;
     else if (r.top < sr.top + 8) $("scroll").scrollTop -= sr.top - r.top + 40;
   }
 
@@ -1796,6 +1811,7 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     if (pending && pending.block && !pending.block.textContent.includes("“")) { pending = null; renderCast(); }
     decorateSoon();
     markDirty();
+    if (document.documentElement.classList.contains("typing")) keepCaretVisible();
   });
 
   editor.addEventListener("keydown", function (e) {
@@ -1970,8 +1986,28 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
 
   window.addEventListener("pagehide", flush);
   document.addEventListener("visibilitychange", function () { if (document.hidden) flush(); });
-  editor.addEventListener("focus", function () { setTimeout(fitViewport, 300); });
-  editor.addEventListener("blur", function () { setTimeout(fitViewport, 100); });
+  // On touch screens the keyboard covers the bottom dock (and inside an embedded
+  // viewer we can't measure the keyboard), so move the tools to the top while typing.
+  var touch = window.matchMedia && matchMedia("(pointer: coarse)").matches;
+  var blurTimer = null;
+  editor.addEventListener("focus", function () {
+    clearTimeout(blurTimer);
+    if (touch) {
+      document.documentElement.classList.add("typing");
+      requestAnimationFrame(keepCaretVisible);
+    }
+    setTimeout(fitViewport, 300);
+  });
+  editor.addEventListener("blur", function () {
+    blurTimer = setTimeout(function () {
+      if (document.activeElement !== editor) document.documentElement.classList.remove("typing");
+      fitViewport();
+    }, 150);
+  });
+  // keep iOS from sliding the whole page up under the keyboard
+  window.addEventListener("scroll", function () {
+    if (document.documentElement.classList.contains("typing") && !window.visualViewport) window.scrollTo(0, 0);
+  });
   if (window.visualViewport) {
     window.visualViewport.addEventListener("resize", fitViewport);
     window.visualViewport.addEventListener("scroll", fitViewport);
