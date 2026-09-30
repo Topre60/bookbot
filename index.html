@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Inkling</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Figtree:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap">
+<style>
+/* Layout: one column of paper in a sage room; header on top, a thumb-reach dock at the bottom
+   holding the cast (who's talking) and the tools. Prose/poem set in a book face, script in Courier. */
+:root {
+  --bg: #e6eae2;
+  --paper: #f8f9f5;
+  --ink: #1a1f19;
+  --muted: #646e60;
+  --line: #d2d8cc;
+  --well: #edf0e8;
+  --accent: #2f47b5;
+  --accent-ink: #ffffff;
+  --hl: rgba(47, 71, 181, 0.12);
+  --danger: #b42318;
+  --c1: #c2410c; --c2: #2f47b5; --c3: #0f766e; --c4: #a21caf; --c5: #a16207; --c6: #4d7c0f;
+  --f-prose: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --f-script: "Courier Prime", "Courier New", Courier, monospace;
+  --f-ui: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 10px;
+  --shadow: 0 1px 0 rgba(20, 30, 20, 0.04), 0 8px 30px rgba(20, 30, 20, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111410; --paper: #181c17; --ink: #e3e8de; --muted: #8e988a; --line: #2b3229; --well: #20251e;
+    --accent: #9aa8ff; --accent-ink: #10132a; --hl: rgba(154, 168, 255, 0.16); --danger: #f97066;
+    --c1: #fb923c; --c2: #9aa8ff; --c3: #2dd4bf; --c4: #e879f9; --c5: #facc15; --c6: #a3e635;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 8px 30px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111410; --paper: #181c17; --ink: #e3e8de; --muted: #8e988a; --line: #2b3229; --well: #20251e;
+  --accent: #9aa8ff; --accent-ink: #10132a; --hl: rgba(154, 168, 255, 0.16); --danger: #f97066;
+  --c1: #fb923c; --c2: #9aa8ff; --c3: #2dd4bf; --c4: #e879f9; --c5: #facc15; --c6: #a3e635;
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 8px 30px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+:root[data-theme="light"] { color-scheme: light; }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-ui); font-size: 15px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased; overflow: hidden;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+svg { display: block; }
+
+.app {
+  height: var(--vvh, 100%);
+  display: flex; flex-direction: column;
+  transform: translateY(var(--vvtop, 0px));
+}
+
+/* ---------- header ---------- */
+.top {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+.icon-btn {
+  width: 38px; height: 38px; flex: none;
+  display: grid; place-items: center;
+  background: transparent; border: 1px solid transparent; border-radius: 9px; color: var(--ink);
+}
+.icon-btn:hover { background: var(--well); }
+.icon-btn svg { width: 20px; height: 20px; }
+.title-input {
+  flex: 1 1 140px; min-width: 0;
+  background: transparent; border: 0; padding: 6px 4px;
+  font-family: var(--f-prose); font-size: 1.3rem; font-weight: 500; letter-spacing: -0.01em;
+}
+.title-input::placeholder { color: var(--muted); }
+.title-input:focus { outline: none; box-shadow: inset 0 -2px 0 var(--accent); }
+.subbar { display: flex; align-items: center; gap: 12px; width: 100%; }
+.seg {
+  display: inline-flex; padding: 3px; gap: 2px;
+  background: var(--well); border: 1px solid var(--line); border-radius: 10px;
+}
+.seg button {
+  border: 0; background: transparent; padding: 5px 12px; border-radius: 7px;
+  font-size: 13px; font-weight: 600; color: var(--muted);
+}
+.seg button[aria-pressed="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.stat { margin-left: auto; min-width: 0; text-align: right; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stat b { color: var(--ink); font-weight: 600; }
+.saved-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--c6); margin-right: 5px; vertical-align: 1px; }
+.saved-dot.dirty { background: var(--c5); }
+
+@media (min-width: 760px) {
+  .top { flex-wrap: nowrap; }
+  .subbar { width: auto; flex: none; }
+}
+
+/* ---------- writing surface ---------- */
+.scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.page {
+  max-width: 44rem; margin: 0 auto; min-height: 100%;
+  background: var(--paper);
+  padding: 28px 16px 40vh;
+}
+@media (min-width: 760px) {
+  .scroll { padding: 28px 24px 0; }
+  .page { border: 1px solid var(--line); border-bottom: 0; border-radius: 14px 14px 0 0; padding: 56px 64px 40vh; box-shadow: var(--shadow); }
+}
+.editor { outline: none; caret-color: var(--accent); word-wrap: break-word; overflow-wrap: anywhere; }
+.editor p { margin: 0; position: relative; }
+.editor p.empty[data-ph]::before {
+  content: attr(data-ph); color: var(--muted); opacity: .7; pointer-events: none;
+  position: absolute; left: 0; right: 0; font-style: italic;
+}
+.editor ::selection { background: var(--hl); }
+.editor p.speaking { box-shadow: -10px 0 0 -7px var(--who, var(--accent)); }
+
+/* prose */
+.editor.m-prose { font-family: var(--f-prose); font-size: 1.2rem; line-height: 1.7; max-width: 38rem; }
+.m-prose p[data-t="p"] + p[data-t="p"] { text-indent: 1.5em; }
+.m-prose p[data-t="p"] + p[data-t="p"].empty[data-ph]::before { text-indent: 1.5em; }
+.m-prose p[data-t="h"] {
+  font-family: var(--f-ui); font-size: .78rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); margin: 2.2em 0 .6em;
+}
+.m-prose p[data-t="h"]:first-child { margin-top: 0; }
+.m-prose p[data-t="h"].empty[data-ph]::before { font-style: normal; }
+
+/* poem */
+.editor.m-poem { font-family: var(--f-prose); font-size: 1.2rem; line-height: 1.85; counter-reset: ln; padding-left: 2.2em; padding-right: 3.2em; }
+.m-poem p:not(.empty) { counter-increment: ln; }
+.m-poem p:not(.empty)::before {
+  content: counter(ln); position: absolute; left: -2.4em; width: 1.8em; text-align: right;
+  font-family: var(--f-ui); font-size: .68rem; color: var(--muted); top: .55em; line-height: 1; font-variant-numeric: tabular-nums;
+}
+.m-poem p[data-syl]::after {
+  content: attr(data-syl); position: absolute; right: -3.3em; top: .5em; line-height: 1;
+  font-family: var(--f-ui); font-size: .68rem; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums;
+  padding: 3px 5px; border-radius: 5px; background: var(--well);
+}
+.m-poem p.syl-ok::after { color: var(--c3); }
+.m-poem p.syl-off::after { color: var(--c1); }
+
+/* screenplay — proportions follow the standard page: 1.5" left, dialogue ~3.5", character ~3.7" in */
+.editor.m-script { font-family: var(--f-script); font-size: 1rem; line-height: 1.5; max-width: 38rem; }
+.m-script p[data-t="scene"] { text-transform: uppercase; font-weight: 700; margin-top: 1.6em; }
+.m-script p[data-t="scene"]:first-child { margin-top: 0; }
+.m-script p[data-t="action"] { margin-top: 1em; }
+.m-script p[data-t="character"] { text-transform: uppercase; margin: 1em 0 0 37%; color: var(--who, inherit); }
+.m-script p[data-t="paren"] { margin-left: 28%; margin-right: 26%; }
+.m-script p[data-t="dialogue"] { margin-left: 17%; margin-right: 16%; }
+.m-script p[data-t="transition"] { text-transform: uppercase; text-align: right; margin-top: 1em; }
+.m-script p[data-t="transition"].empty[data-ph]::before { text-align: right; }
+@media (max-width: 520px) {
+  .m-script p[data-t="character"] { margin-left: 30%; }
+  .m-script p[data-t="paren"] { margin-left: 20%; margin-right: 12%; }
+  .m-script p[data-t="dialogue"] { margin-left: 10%; margin-right: 6%; }
+}
+
+/* ---------- dock ---------- */
+.dock {
+  border-top: 1px solid var(--line); background: var(--bg);
+  padding: 8px 0 calc(env(safe-area-inset-bottom, 0px) + 8px);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.row {
+  display: flex; align-items: center; gap: 6px;
+  overflow-x: auto; scrollbar-width: none; padding: 0 16px;
+}
+.row::-webkit-scrollbar { display: none; }
+.row-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); flex: none; margin-right: 2px; }
+.chip {
+  flex: none; display: inline-flex; align-items: center; gap: 7px;
+  height: 36px; padding: 0 12px 0 5px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--paper); font-weight: 600; font-size: 13.5px;
+}
+.chip .key {
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--who); color: var(--paper); font-size: 13px; font-weight: 700;
+}
+.chip.live { border-color: var(--who); box-shadow: 0 0 0 2px var(--who) inset; }
+.chip.ghost { padding: 0 12px; color: var(--muted); border-style: dashed; background: transparent; }
+.tool {
+  flex: none; height: 36px; min-width: 40px; padding: 0 11px;
+  border-radius: 9px; border: 1px solid var(--line); background: var(--paper);
+  font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
+}
+.tool.q { font-family: var(--f-prose); font-size: 19px; font-weight: 500; letter-spacing: .05em; }
+.tool[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.tool svg { width: 17px; height: 17px; }
+.tool.accent { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.sep { width: 1px; height: 22px; background: var(--line); flex: none; margin: 0 2px; }
+.mini-select {
+  flex: none; height: 36px; border-radius: 9px; border: 1px solid var(--line); background: var(--paper);
+  padding: 0 8px; font-size: 13px; font-weight: 600;
+}
+.tip {
+  margin: 0 16px; padding: 9px 12px; border-radius: 9px; background: var(--hl);
+  font-size: 13px; display: flex; gap: 10px; align-items: flex-start;
+}
+.tip p { margin: 0; flex: 1; }
+.tip button { border: 0; background: transparent; color: var(--accent); font-weight: 700; padding: 0; }
+
+/* ---------- sheets & drawer ---------- */
+.scrim { position: fixed; inset: 0; background: rgba(10, 14, 10, .42); z-index: 20; }
+.sheet {
+  position: fixed; z-index: 21; left: 0; right: 0; bottom: 0;
+  max-height: 86%; overflow-y: auto;
+  background: var(--paper); color: var(--ink);
+  border-radius: 18px 18px 0 0; border-top: 1px solid var(--line);
+  padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  box-shadow: 0 -10px 40px rgba(0,0,0,.18);
+}
+@media (min-width: 760px) {
+  .sheet { left: 50%; right: auto; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 32px)); border-radius: 16px; border: 1px solid var(--line); padding: 8px 24px 24px; }
+}
+.sheet .grab { width: 40px; height: 4px; border-radius: 4px; background: var(--line); margin: 4px auto 10px; }
+.sheet h2 { font-family: var(--f-prose); font-weight: 500; font-size: 1.5rem; margin: 4px 0 4px; text-wrap: balance; }
+.sheet .lede { color: var(--muted); margin: 0 0 16px; font-size: 14px; max-width: 60ch; }
+.sheet h3 { font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 20px 0 8px; }
+.btn {
+  height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--paper); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--danger); }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-row.end { justify-content: flex-end; margin-top: 18px; }
+
+.tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.tpl {
+  text-align: left; border: 1px solid var(--line); background: var(--paper); border-radius: 12px;
+  padding: 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.tpl:hover { border-color: var(--accent); }
+.tpl b { font-size: 14.5px; }
+.tpl span { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.tpl .meta { font-family: var(--f-script); font-size: 11.5px; color: var(--ink); opacity: .75; }
+.insert-toggle { display: flex; gap: 8px; align-items: center; font-size: 13.5px; color: var(--muted); margin: 0 0 6px; }
+
+.drawer {
+  position: fixed; z-index: 21; top: 0; bottom: 0; left: 0; width: min(360px, 88vw);
+  background: var(--paper); border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; overflow-y: auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 16px calc(env(safe-area-inset-bottom, 0px) + 18px);
+}
+.wordmark { font-family: var(--f-prose); font-style: italic; font-size: 1.9rem; margin: 0; line-height: 1; letter-spacing: -0.02em; }
+.wordmark-sub { color: var(--muted); font-size: 13px; margin: 6px 0 16px; }
+.doc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.doc-item {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center;
+  padding: 10px 10px; border-radius: 10px; cursor: pointer; border: 1px solid transparent;
+}
+.doc-item:hover { background: var(--well); }
+.doc-item.on { background: var(--hl); }
+.doc-item .dt { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.doc-item .dm { grid-column: 1; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.doc-item .badge { grid-row: 1 / span 2; grid-column: 2; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; }
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+.field label, .field .lbl { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.field input[type=text], .field input[type=number], .field select {
+  height: 40px; border: 1px solid var(--line); border-radius: 9px; background: var(--well); padding: 0 12px;
+}
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; background: var(--sw); padding: 0; }
+.swatch[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 2px var(--paper) inset; }
+.cast-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cast-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.cast-list .key { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--who); color: var(--paper); font-weight: 700; font-size: 13px; flex: none; }
+.cast-list .nm { flex: 1; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cast-list button { border: 0; background: transparent; color: var(--muted); font-weight: 600; font-size: 13px; padding: 4px 6px; }
+.two { display: grid; grid-template-columns: 1fr 90px; gap: 10px; }
+.opt { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.opt:last-child { border-bottom: 0; }
+.opt select { height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--well); padding: 0 8px; max-width: 58%; }
+.switch { appearance: none; width: 42px; height: 24px; border-radius: 999px; background: var(--line); position: relative; flex: none; cursor: pointer; margin: 0; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--paper); transition: left .15s; }
+.switch:checked { background: var(--accent); }
+.switch:checked::after { left: 21px; }
+.account { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 13.5px; }
+.account p { margin: 0; color: var(--muted); }
+.kbd-list { font-size: 13.5px; margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.kbd-list li { max-width: 60ch; }
+kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; background: var(--well); }
+.demo { font-family: var(--f-prose); font-size: 1.05rem; background: var(--well); border-radius: 10px; padding: 10px 12px; margin: 6px 0 0; }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 130px); z-index: 30;
+  background: var(--ink); color: var(--paper); padding: 10px 14px; border-radius: 10px; font-size: 13.5px; font-weight: 500;
+  display: flex; gap: 14px; align-items: center; box-shadow: var(--shadow); max-width: calc(100% - 32px);
+}
+.toast button { border: 0; background: transparent; color: var(--paper); font-weight: 700; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+@media (prefers-reduced-motion: no-preference) {
+  .sheet, .drawer { animation: rise .18s ease-out; }
+  .drawer { animation-name: slide; }
+  @keyframes rise { from { opacity: 0; translate: 0 12px; } }
+  @keyframes slide { from { translate: -24px 0; opacity: 0; } }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <button class="icon-btn" id="libBtn" aria-label="Open library">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+    </button>
+    <input id="title" class="title-input" type="text" placeholder="Untitled" aria-label="Title" autocomplete="off">
+    <button class="icon-btn" id="helpBtn" aria-label="How it works">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>
+    </button>
+    <button class="icon-btn" id="themeBtn" aria-label="Switch theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+    </button>
+    <div class="subbar">
+      <div class="seg" role="group" aria-label="Writing mode">
+        <button data-mode="prose" aria-pressed="true">Prose</button>
+        <button data-mode="script" aria-pressed="false">Script</button>
+        <button data-mode="poem" aria-pressed="false">Poem</button>
+      </div>
+      <span class="stat" id="stat"></span>
+    </div>
+  </header>
+
+  <main class="scroll" id="scroll">
+    <div class="page">
+      <div id="editor" class="editor m-prose" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Your writing"></div>
+    </div>
+  </main>
+
+  <footer class="dock" id="dock">
+    <div class="tip" id="tip" hidden>
+      <p>Tap a character to open a line of dialogue. Type it, press <b>Enter</b>, and the tag is added for you. Or highlight a line and tap a character.</p>
+      <button id="tipClose" aria-label="Dismiss tip">Got it</button>
+    </div>
+    <div class="row" id="castRow" aria-label="Cast"></div>
+    <div class="row" id="toolRow">
+      <button class="tool q" data-act="quote" title="Quote selection (Ctrl+')" aria-label="Wrap in double quotes">“ ”</button>
+      <button class="tool q" data-act="squote" aria-label="Wrap in single quotes">‘ ’</button>
+      <button class="tool q" data-act="ins" data-text="—" aria-label="Insert em dash">—</button>
+      <button class="tool q" data-act="ins" data-text="…" aria-label="Insert ellipsis">…</button>
+      <span class="sep" data-when="script"></span>
+      <button class="tool" data-type="scene" data-when="script">Scene</button>
+      <button class="tool" data-type="action" data-when="script">Action</button>
+      <button class="tool" data-type="character" data-when="script">Character</button>
+      <button class="tool" data-type="paren" data-when="script">(Paren)</button>
+      <button class="tool" data-type="dialogue" data-when="script">Dialogue</button>
+      <button class="tool" data-type="transition" data-when="script">Trans.</button>
+      <span class="sep" data-when="prose"></span>
+      <button class="tool" data-type="p" data-when="prose">¶ Text</button>
+      <button class="tool" data-type="h" data-when="prose">Heading</button>
+      <span class="sep"></span>
+      <button class="tool accent" id="tplBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 13.5v6M13.5 16.5h6"/></svg>
+        Templates
+      </button>
+    </div>
+  </footer>
+</div>
+
+<!-- library drawer -->
+<div class="scrim" id="drawerScrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Library">
+  <p class="wordmark">Inkling</p>
+  <p class="wordmark-sub">Prose, script and poems in one place.</p>
+  <div class="btn-row" style="margin-bottom:14px">
+    <button class="btn primary" data-new="prose">+ Prose</button>
+    <button class="btn" data-new="script">+ Script</button>
+    <button class="btn" data-new="poem">+ Poem</button>
+  </div>
+  <ul class="doc-list" id="docList"></ul>
+
+  <h3 class="drawer-h" style="font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px">This piece</h3>
+  <div class="btn-row">
+    <button class="btn" id="copyBtn">Copy text</button>
+    <button class="btn" id="exportBtn">Download</button>
+    <button class="btn" id="dupBtn">Duplicate</button>
+    <button class="btn danger" id="delBtn">Delete</button>
+  </div>
+  <div class="field" style="margin-top:12px">
+    <label for="goal">Word goal</label>
+    <input type="number" id="goal" min="0" step="50" placeholder="None">
+  </div>
+
+  <h3 style="font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px">Import</h3>
+  <div class="btn-row">
+    <button class="btn" id="importBtn">Open .txt / .md / .fountain</button>
+    <input type="file" id="importInput" accept=".txt,.md,.markdown,.fountain,text/plain" hidden>
+  </div>
+
+  <h3 style="font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:22px 0 4px">Settings</h3>
+  <div>
+    <div class="opt"><label for="setTheme">Theme</label>
+      <select id="setTheme"><option value="system">Match device</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+    <div class="opt"><label for="setSmart">Curly quotes as you type</label><input type="checkbox" class="switch" id="setSmart"></div>
+    <div class="opt"><label for="setTag">Dialogue tag</label>
+      <select id="setTag"><option value="verb-name">“Hi,” says Jun.</option><option value="name-verb">“Hi,” Jun says.</option><option value="before">Jun says, “Hi.”</option></select></div>
+    <div class="opt"><label for="setTense">Tag tense</label>
+      <select id="setTense"><option value="present">Present (says)</option><option value="past">Past (said)</option></select></div>
+  </div>
+
+  <h3 style="font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px">Account</h3>
+  <div class="account" id="account"></div>
+</aside>
+
+<!-- templates -->
+<div class="scrim" id="sheetScrim" hidden></div>
+<section class="sheet" id="tplSheet" hidden aria-label="Templates">
+  <div class="grab"></div>
+  <h2>Templates</h2>
+  <p class="lede">Each one starts a new piece with the structure laid out. Grey hints disappear as you type.</p>
+  <label class="insert-toggle"><input type="checkbox" class="switch" id="tplInsert"> Add to this piece at the cursor instead</label>
+  <div id="tplBody"></div>
+</section>
+
+<!-- cast editor -->
+<section class="sheet" id="castSheet" hidden aria-label="Cast">
+  <div class="grab"></div>
+  <h2>Cast</h2>
+  <p class="lede">Characters in this piece. Tapping one in the dock writes their dialogue and tags it with their name.</p>
+  <ul class="cast-list" id="castList"></ul>
+  <form id="castForm" autocomplete="off">
+    <h3 id="castFormH">Add a character</h3>
+    <div class="two">
+      <div class="field"><label for="cName">Name</label><input type="text" id="cName" placeholder="Jun" required maxlength="40"></div>
+      <div class="field"><label for="cKey">Button</label><input type="text" id="cKey" placeholder="J" maxlength="3"></div>
+    </div>
+    <div class="field"><span class="lbl">Colour</span><div class="swatches" id="swatches"></div></div>
+    <div class="btn-row end">
+      <button type="button" class="btn" id="castCancel" hidden>Cancel edit</button>
+      <button type="submit" class="btn primary" id="castSave">Add</button>
+    </div>
+  </form>
+</section>
+
+<!-- confirm / mode switch -->
+<section class="sheet" id="askSheet" hidden aria-label="Confirm">
+  <div class="grab"></div>
+  <h2 id="askH"></h2>
+  <p class="lede" id="askP"></p>
+  <div class="btn-row end" id="askBtns"></div>
+</section>
+
+<!-- help -->
+<section class="sheet" id="helpSheet" hidden aria-label="How it works">
+  <div class="grab"></div>
+  <h2>How Inkling works</h2>
+  <h3>Dialogue, fast</h3>
+  <ol class="kbd-list">
+    <li>Add your characters with <b>+ Cast</b> in the dock. Give each a one-letter button, like J and L.</li>
+    <li>Tap <b>J</b>. You get an open quote. Type the line and press <b>Enter</b>.</li>
+    <li>The line closes with the tag, punctuation fixed:<div class="demo">“Did you bring it?” asks Jun.</div></li>
+    <li>Turn on <b>⇄ Back and forth</b> and Enter hands the next line to the other character. Press Enter on an empty quote to stop.</li>
+    <li>Already wrote the line? Highlight it and tap a character. Highlight anything and tap <b>“ ”</b> to just quote it.</li>
+  </ol>
+  <h3>Prose and screenplay</h3>
+  <ol class="kbd-list">
+    <li>Switch between <b>Prose</b>, <b>Script</b> and <b>Poem</b> at the top. Inkling can convert the text: tagged dialogue becomes character and dialogue blocks, and back again.</li>
+    <li>In Script, Enter picks the next element for you (Character → Dialogue → Action). Lines starting with INT. or EXT. become scene headings.</li>
+    <li>Script pages export as Fountain, which Final Draft, Highland and WriterSolo open.</li>
+  </ol>
+  <h3>Keyboard</h3>
+  <ul class="kbd-list">
+    <li><kbd>Ctrl</kbd> + <kbd>'</kbd> quote the selection</li>
+    <li><kbd>Alt</kbd> + <kbd>1</kbd>–<kbd>9</kbd> speak as a cast member</li>
+    <li><kbd>Tab</kbd> in Script cycles the element type</li>
+  </ul>
+  <div class="btn-row end"><button class="btn primary" data-close>Close</button></div>
+</section>
+
+<div class="toast" id="toast" hidden role="status"><span id="toastMsg"></span><button id="toastAct" hidden></button></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ================================================================
+     Cloud sync (optional). Paste your Firebase web config here to turn
+     on Google sign-in and per-user storage in Firestore. Leave as null
+     to keep everything on this device only.
+     ================================================================ */
+  var FIREBASE_CONFIG = null;
+  var FIREBASE_VERSION = "11.8.1";
+
+  var STORE_KEY = "inkling.v1";
+  var COLORS = ["c1", "c2", "c3", "c4", "c5", "c6"];
+  var TYPES = {
+    prose: ["p", "h"],
+    script: ["scene", "action", "character", "paren", "dialogue", "transition"],
+    poem: ["verse"]
+  };
+  var DEFAULT_TYPE = { prose: "p", script: "action", poem: "verse" };
+  var NEXT = { scene: "action", action: "action", character: "dialogue", paren: "dialogue", dialogue: "action", transition: "scene", p: "p", h: "p", verse: "verse" };
+  var CYCLE = ["scene", "action", "character", "paren", "dialogue", "transition"];
+  var MODE_NAME = { prose: "Prose", script: "Script", poem: "Poem" };
+  var VERB_PRESENT = ["says", "asks", "replies", "whispers", "shouts", "murmurs", "snaps", "laughs"];
+  var PAST = { says: "said", asks: "asked", replies: "replied", whispers: "whispered", shouts: "shouted", murmurs: "murmured", snaps: "snapped", laughs: "laughed" };
+  var TAG_VERBS = "says|said|asks|asked|replies|replied|whispers|whispered|shouts|shouted|murmurs|murmured|yells|yelled|cries|cried|mutters|muttered|answers|answered|calls|called|exclaims|exclaimed|adds|added|continues|continued|snaps|snapped|laughs|laughed|sighs|sighed|tells|told";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var editor = $("editor");
+
+  /* ---------------- state ---------------- */
+  var state = { docs: {}, currentId: null, settings: { theme: "system", smart: true, tag: "verb-name", tense: "present", verb: "auto", pingpong: false, tipSeen: false } };
+  var pending = null;        // { id, block } — an open line of dialogue waiting for Enter
+  var lastSpeakers = [];     // most recent first
+  var savedRange = null;
+  var saveTimer = null, decorateQueued = false;
+  var cloud = { ready: false, user: null, api: null, error: null, busy: false };
+
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function now() { return Date.now(); }
+  function cur() { return state.docs[state.currentId]; }
+
+  function loadStore() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        var s = JSON.parse(raw);
+        if (s && s.docs) {
+          state.docs = s.docs;
+          state.currentId = s.currentId;
+          Object.assign(state.settings, s.settings || {});
+        }
+      }
+    } catch (e) { /* storage unavailable: run in memory */ }
+    if (!Object.keys(state.docs).length) seedSamples();
+    if (!state.docs[state.currentId]) state.currentId = sortedDocs()[0].id;
+  }
+  function writeStore() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+  }
+  function markDirty() {
+    var d = cur();
+    if (!d) return;
+    d.updatedAt = now();
+    setSaved(false);
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      collect();
+      writeStore();
+      setSaved(true);
+      cloudPush(cur());
+    }, 450);
+  }
+  function flush() {
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; collect(); writeStore(); cloudPush(cur()); setSaved(true); }
+  }
+  var savedFlag = true;
+  function setSaved(v) { savedFlag = v; updateStat(); }
+
+  function newDoc(mode, title, blocks, extra) {
+    var d = Object.assign({
+      id: uid(), title: title || "", mode: mode,
+      blocks: blocks || [{ t: DEFAULT_TYPE[mode], x: "" }],
+      cast: [], goal: 0, createdAt: now(), updatedAt: now()
+    }, extra || {});
+    state.docs[d.id] = d;
+    return d;
+  }
+  function sortedDocs() {
+    return Object.keys(state.docs).map(function (k) { return state.docs[k]; })
+      .filter(function (d) { return !d.deleted; })
+      .sort(function (a, b) { return b.updatedAt - a.updatedAt; });
+  }
+
+  /* ---------------- samples ---------------- */
+  function seedSamples() {
+    var cast = [
+      { id: uid(), name: "Jun", key: "J", color: "c2" },
+      { id: uid(), name: "Lena", key: "L", color: "c1" }
+    ];
+    var P = function (x) { return { t: "p", x: x }; };
+    var prose = newDoc("prose", "The Night Ferry (sample)", [
+      P("The ferry left at eleven, the last one of the night, and Jun had the rail almost to themselves. The water was black and the island lights were already small."),
+      P("“You’re late,” says Lena."),
+      P("Jun didn’t turn around. “The ferry’s late. I’m exactly on time.”"),
+      P("“Did you bring it?” asks Lena."),
+      P("“I brought something,” says Jun."),
+      P("Lena leaned on the rail beside them and waited. Somewhere below, the engine changed its note."),
+      { t: "p", x: "", ph: "Your turn: tap J or L in the dock and keep the scene going." }
+    ], { cast: cast, goal: 1000 });
+    prose.updatedAt = now() + 2;
+
+    var script = newDoc("script", "The Night Ferry (as a script)", convertBlocks(prose.blocks.slice(0, 6), "prose", "script", cast), { cast: cast.map(function (c) { return Object.assign({}, c); }) });
+    script.blocks.unshift({ t: "scene", x: "EXT. FERRY DECK — NIGHT" });
+    script.updatedAt = now() + 1;
+
+    newDoc("poem", "Harbour haiku (sample)", [
+      { t: "verse", x: "last boat of the night", syl: 5 },
+      { t: "verse", x: "the island lights go under", syl: 7 },
+      { t: "verse", x: "one star at a time", syl: 5 }
+    ]);
+    state.currentId = prose.id;
+  }
+
+  /* ================================================================
+     Editor DOM ⇄ blocks
+     ================================================================ */
+  function makeBlock(b) {
+    var p = document.createElement("p");
+    p.dataset.t = b.t;
+    if (b.ph) p.dataset.ph = b.ph;
+    if (b.syl) p.dataset.target = b.syl;
+    setBlockText(p, b.x || "");
+    return p;
+  }
+  function setBlockText(p, s) {
+    p.textContent = s;
+    if (!s) p.appendChild(document.createElement("br"));
+  }
+  function renderEditor() {
+    var d = cur();
+    editor.className = "editor m-" + d.mode;
+    editor.textContent = "";
+    var frag = document.createDocumentFragment();
+    d.blocks.forEach(function (b) { frag.appendChild(makeBlock(b)); });
+    editor.appendChild(frag);
+    ensureBlocks();
+    decorateAll();
+  }
+  function collect() {
+    var d = cur();
+    if (!d) return;
+    d.blocks = Array.prototype.map.call(editor.children, function (p) {
+      var b = { t: p.dataset.t || DEFAULT_TYPE[d.mode], x: p.textContent };
+      if (p.dataset.ph) b.ph = p.dataset.ph;
+      if (p.dataset.target) b.syl = +p.dataset.target;
+      return b;
+    });
+  }
+
+  /* keep the editor as a flat list of <p data-t> holding plain text */
+  function ensureBlocks() {
+    var d = cur(), def = DEFAULT_TYPE[d.mode];
+    var kids = Array.prototype.slice.call(editor.childNodes);
+    var caret = caretInfo();
+    var changed = false;
+    kids.forEach(function (n) {
+      if (n.nodeType === 1 && n.nodeName === "P") {
+        if (!n.dataset.t || TYPES[d.mode].indexOf(n.dataset.t) < 0) { n.dataset.t = mapType(n.dataset.t, d.mode); }
+        if (n.querySelector("*:not(br)")) { var t = n.textContent; setBlockText(n, t); changed = true; }
+        n.removeAttribute("style"); n.removeAttribute("class");
+        return;
+      }
+      if (n.nodeType === 3 && !n.textContent.trim()) { editor.removeChild(n); return; }
+      var p = document.createElement("p");
+      p.dataset.t = def;
+      setBlockText(p, n.textContent.replace(/\n+/g, " "));
+      editor.replaceChild(p, n);
+      changed = true;
+    });
+    if (!editor.firstElementChild) { editor.appendChild(makeBlock({ t: def, x: "" })); changed = true; }
+    if (changed && caret && editor.contains(caret.block)) setSel(caret.block, caret.a);
+  }
+
+  function blockOf(node) {
+    if (!node || !editor.contains(node) || node === editor) return null;
+    while (node && node.parentNode !== editor) node = node.parentNode;
+    return node && node.nodeName === "P" ? node : null;
+  }
+  function curBlock() {
+    var s = getSelection();
+    if (!s.rangeCount) return null;
+    return blockOf(s.anchorNode) || (s.anchorNode === editor ? editor.children[Math.min(s.anchorOffset, editor.children.length - 1)] : null);
+  }
+  function offsetIn(block, node, off) {
+    if (node === editor) return off > Array.prototype.indexOf.call(editor.children, block) ? block.textContent.length : 0;
+    var r = document.createRange();
+    r.setStart(block, 0);
+    try { r.setEnd(node, off); } catch (e) { return 0; }
+    return r.toString().length;
+  }
+  function caretInfo() {
+    var s = getSelection();
+    if (!s.rangeCount) return null;
+    var r = s.getRangeAt(0);
+    var b1 = blockOf(r.startContainer), b2 = blockOf(r.endContainer);
+    if (!b1 || !b2) return null;
+    return { block: b1, endBlock: b2, a: offsetIn(b1, r.startContainer, r.startOffset), b: offsetIn(b2, r.endContainer, r.endOffset), collapsed: r.collapsed };
+  }
+  function pointAt(block, pos) {
+    var w = document.createTreeWalker(block, NodeFilter.SHOW_TEXT), n, left = pos, last = null;
+    while ((n = w.nextNode())) {
+      last = n;
+      if (left <= n.length) return [n, left];
+      left -= n.length;
+    }
+    return last ? [last, last.length] : [block, 0];
+  }
+  function setSel(block, a, b) {
+    if (b == null) b = a;
+    var r = document.createRange();
+    var p1 = pointAt(block, a), p2 = pointAt(block, b);
+    r.setStart(p1[0], p1[1]); r.setEnd(p2[0], p2[1]);
+    var s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  }
+  function insertText(str) {
+    var ok = false;
+    try { ok = document.execCommand("insertText", false, str); } catch (e) { ok = false; }
+    if (!ok) {
+      var s = getSelection(), r = s.getRangeAt(0);
+      r.deleteContents();
+      var tn = document.createTextNode(str);
+      r.insertNode(tn);
+      r.setStartAfter(tn); r.collapse(true);
+      s.removeAllRanges(); s.addRange(r);
+      var b = blockOf(tn); if (b) { var br = b.querySelector("br"); if (br && b.textContent) br.remove(); }
+    }
+  }
+  function replaceRange(block, a, b, str) {
+    setSel(block, a, b);
+    if (str === "" && a !== b) { document.execCommand("delete"); return; }
+    insertText(str);
+  }
+  function restoreSel() {
+    if (document.activeElement !== editor) editor.focus({ preventScroll: true });
+    var s = getSelection();
+    if (savedRange && (!s.rangeCount || !editor.contains(s.anchorNode))) {
+      s.removeAllRanges(); s.addRange(savedRange);
+    }
+    if (!curBlock()) {
+      var last = editor.lastElementChild;
+      setSel(last, last.textContent.length);
+    }
+  }
+
+  /* new block after `block` (or split at the caret) — uses the native command so undo keeps working */
+  function newLineAfter(block, type) {
+    setSel(block, block.textContent.length);
+    var ok = false;
+    try { ok = document.execCommand("insertParagraph"); } catch (e) { ok = false; }
+    var nb = curBlock();
+    if (!ok || !nb || nb === block) {
+      nb = makeBlock({ t: type, x: "" });
+      block.after(nb);
+      setSel(nb, 0);
+    }
+    nb.dataset.t = type;
+    delete nb.dataset.ph; delete nb.dataset.target;
+    nb.removeAttribute("class"); nb.removeAttribute("style");
+    return nb;
+  }
+
+  function handleEnter() {
+    var d = cur();
+    var c = caretInfo();
+    if (!c) return false;
+    if (!c.collapsed) { document.execCommand("delete"); c = caretInfo(); if (!c) return true; }
+    var b = c.block, t = b.dataset.t, len = b.textContent.length;
+
+    if (pending && pending.block === b) {
+      var spoke = finishPending();
+      if (!spoke && !b.textContent) { afterStructural(); return true; }
+      var nb = newLineAfter(b, DEFAULT_TYPE[d.mode]);
+      if (spoke && state.settings.pingpong) {
+        var other = otherSpeaker(spoke);
+        if (other) openLine(nb, other);
+      }
+      afterStructural();
+      return true;
+    }
+
+    if (c.a === 0 && len > 0) {
+      var before = makeBlock({ t: t, x: "" });
+      b.before(before);
+      setSel(b, 0);
+      afterStructural();
+      return true;
+    }
+    if (d.mode === "script" && len === 0 && t !== "action") {
+      // Enter on an empty element drops back to action, like Final Draft
+      b.dataset.t = "action";
+      afterStructural();
+      return true;
+    }
+    var type = c.a >= len ? NEXT[t] || DEFAULT_TYPE[d.mode] : t;
+    var ok = false;
+    try { ok = document.execCommand("insertParagraph"); } catch (e) { ok = false; }
+    var n2 = curBlock();
+    if (!ok || !n2 || n2 === b) {
+      var tail = b.textContent.slice(c.a);
+      setBlockText(b, b.textContent.slice(0, c.a));
+      n2 = makeBlock({ t: type, x: tail });
+      b.after(n2);
+      setSel(n2, 0);
+    }
+    n2.dataset.t = type;
+    delete n2.dataset.ph; delete n2.dataset.target;
+    n2.removeAttribute("class");
+    afterStructural();
+    return true;
+  }
+
+  function afterStructural() {
+    ensureBlocks();
+    decorateSoon();
+    markDirty();
+    keepCaretVisible();
+    syncTypeButtons();
+  }
+  function keepCaretVisible() {
+    var b = curBlock();
+    if (!b) return;
+    var r = b.getBoundingClientRect(), sr = $("scroll").getBoundingClientRect();
+    if (r.bottom > sr.bottom - 24) $("scroll").scrollTop += r.bottom - sr.bottom + 60;
+    else if (r.top < sr.top + 8) $("scroll").scrollTop -= sr.top - r.top + 40;
+  }
+
+  /* ---------------- decoration: placeholders, speaker colours, syllables ---------------- */
+  function decorateSoon() {
+    if (decorateQueued) return;
+    decorateQueued = true;
+    requestAnimationFrame(function () { decorateQueued = false; decorateAll(); updateStat(); });
+  }
+  function decorateAll() {
+    var d = cur();
+    var castByName = {};
+    d.cast.forEach(function (c) { castByName[c.name.toUpperCase()] = c; });
+    Array.prototype.forEach.call(editor.children, function (p) {
+      var txt = p.textContent;
+      p.classList.toggle("empty", txt.length === 0);
+      if (d.mode === "script") {
+        if (p.dataset.t === "character") {
+          var who = castByName[txt.replace(/\s*\(.*\)\s*$/, "").trim().toUpperCase()];
+          if (who) p.style.setProperty("--who", "var(--" + who.color + ")"); else p.style.removeProperty("--who");
+        } else p.style.removeProperty("--who");
+      }
+      if (d.mode === "poem") {
+        if (txt.trim()) {
+          var n = syllables(txt), tg = +p.dataset.target || 0;
+          p.dataset.syl = tg ? n + "/" + tg : String(n);
+          p.classList.toggle("syl-ok", !!tg && n === tg);
+          p.classList.toggle("syl-off", !!tg && n !== tg);
+        } else if (p.dataset.target) {
+          p.dataset.syl = "0/" + p.dataset.target; p.classList.remove("syl-ok", "syl-off");
+        } else delete p.dataset.syl;
+      } else delete p.dataset.syl;
+    });
+    if (pending) {
+      if (!editor.contains(pending.block)) { pending = null; renderCast(); }
+      else {
+        var c = castById(pending.id);
+        pending.block.classList.add("speaking");
+        if (c) pending.block.style.setProperty("--who", "var(--" + c.color + ")");
+      }
+    }
+  }
+
+  function syllables(line) {
+    var words = line.toLowerCase().match(/[a-z’']+/g) || [];
+    return words.reduce(function (sum, w) {
+      w = w.replace(/[’']/g, "");
+      if (!w) return sum;
+      if (w.length <= 3) return sum + 1;
+      w = w.replace(/(?:[^laeiouy]es|[^laeiouy]ed|[^laeiouy]e)$/, "").replace(/^y/, "");
+      var m = w.match(/[aeiouy]{1,2}/g);
+      return sum + (m ? m.length : 1);
+    }, 0);
+  }
+
+  function wordCount(d) {
+    var n = 0;
+    d.blocks.forEach(function (b) { var m = b.x.match(/[\p{L}\p{N}][\p{L}\p{N}’'\-]*/gu); if (m) n += m.length; });
+    return n;
+  }
+  function updateStat() {
+    var d = cur();
+    if (!d) return;
+    collectLight();
+    var words = wordCount(d);
+    var bits = ["<span class=\"saved-dot" + (savedFlag ? "" : " dirty") + "\" aria-hidden=\"true\"></span>"];
+    bits.push("<b>" + words.toLocaleString() + "</b>" + (d.goal ? " / " + d.goal.toLocaleString() : "") + " words");
+    if (d.mode === "script") {
+      // ~55 lines per page; one page ≈ one minute of screen time
+      var lines = d.blocks.reduce(function (s, b) {
+        var w = b.t === "dialogue" ? 35 : b.t === "paren" ? 25 : 60;
+        var extra = (b.t === "scene" || b.t === "action" || b.t === "character" || b.t === "transition") ? 1 : 0;
+        return s + Math.max(1, Math.ceil(b.x.length / w)) + extra;
+      }, 0);
+      bits.push("≈ " + Math.max(1, Math.round(lines / 55 * 10) / 10) + " pg");
+    }
+    if (d.mode === "poem") {
+      var ln = d.blocks.filter(function (b) { return b.x.trim(); }).length;
+      bits.push(ln + " lines");
+    }
+    $("stat").innerHTML = bits.join(" · ");
+  }
+  function collectLight() {
+    // keep d.blocks roughly in sync for counts without rebuilding metadata
+    var d = cur();
+    if (editor.children.length) collect();
+    return d;
+  }
+
+  /* ================================================================
+     Quotes & dialogue
+     ================================================================ */
+  function quoteSelection(open, close) {
+    restoreSel();
+    var c = caretInfo();
+    if (!c) return;
+    if (c.collapsed) {
+      insertText(open + close);
+      var cc = caretInfo();
+      setSel(cc.block, cc.a - 1);
+    } else if (c.block === c.endBlock) {
+      var txt = c.block.textContent, a = c.a, b = c.b;
+      while (a < b && /\s/.test(txt[a])) a++;
+      while (b > a && /\s/.test(txt[b - 1])) b--;
+      if (txt[a - 1] === open && txt[b] === close) {
+        // already quoted: remove them
+        replaceRange(c.block, a - 1, b + 1, txt.slice(a, b));
+        setSel(c.block, a - 1, b - 1);
+      } else {
+        replaceRange(c.block, a, b, open + txt.slice(a, b) + close);
+        setSel(c.block, b + 2);
+      }
+    } else {
+      var eb = c.endBlock, sb = c.block, ea = c.b, sa = c.a;
+      setSel(eb, ea); insertText(close);
+      setSel(sb, sa); insertText(open);
+    }
+    decorateSoon(); markDirty();
+  }
+
+  function castById(id) { return cur().cast.filter(function (c) { return c.id === id; })[0]; }
+  function verbFor(core) {
+    var v = state.settings.verb;
+    if (v === "none") return "";
+    if (v === "auto") v = /\?\s*$/.test(core) ? "asks" : "says";
+    return state.settings.tense === "past" ? (PAST[v] || v) : v;
+  }
+  /* “Hello,” says Jun.  /  Jun says, “Hello.” */
+  function tagged(core, ch, followedByPunct, extra) {
+    core = core.trim().replace(/^[“"]|[”"]$/g, "").trim();
+    var verb = verbFor(core);
+    var name = ch.name;
+    var last = core.slice(-1);
+    if (!verb) {
+      if (!/[.?!…—,]/.test(last)) core += ".";
+      return "“" + core + "”";
+    }
+    var style = state.settings.tag;
+    if (style === "before") {
+      if (last === ",") core = core.slice(0, -1) + ".";
+      else if (!/[.?!…—]/.test(last)) core += ".";
+      return name + " " + verb + (extra ? " " + extra : "") + ", “" + core + "”";
+    }
+    if (last === ".") core = core.slice(0, -1) + ",";
+    else if (!/[,?!…—\-]/.test(last)) core += ",";
+    var tag = style === "name-verb" ? name + " " + verb : verb + " " + name;
+    return "“" + core + "” " + tag + (extra ? ", " + extra : "") + (followedByPunct ? "" : ".");
+  }
+
+  function speak(id) {
+    var d = cur(), ch = castById(id);
+    if (!ch) return;
+    restoreSel();
+    var c = caretInfo();
+    if (!c) return;
+    remember(id);
+    if (d.mode === "script") { speakScript(ch, c); return; }
+
+    // an open line is waiting: close it (tap same character) or hand over (another character)
+    if (pending && editor.contains(pending.block)) {
+      var pb = pending.block, same = pending.id === id;
+      var spoke = finishPending();
+      if (same || !spoke) { decorateSoon(); markDirty(); renderCast(); return; }
+      var nb = newLineAfter(pb, DEFAULT_TYPE[d.mode]);
+      openLine(nb, ch);
+      afterStructural();
+      return;
+    }
+
+    var txt = c.block.textContent;
+    if (!c.collapsed && c.block === c.endBlock) {
+      var a = c.a, b = c.b;
+      while (a < b && /\s/.test(txt[a])) a++;
+      while (b > a && /\s/.test(txt[b - 1])) b--;
+      if (txt[a - 1] === "“" && txt[b] === "”") { a--; b++; }
+      var after = txt.slice(b);
+      // swallow an existing tag like  says Lena.  right after the quote
+      var old = after.match(new RegExp("^,?\\s+(?:(?:" + TAG_VERBS + ")\\s+[\\p{Lu}][\\p{L}’'\\-]*|[\\p{Lu}][\\p{L}’'\\-]*\\s+(?:" + TAG_VERBS + "))\\.?", "u"));
+      if (old) { b += old[0].length; after = txt.slice(b); }
+      var follow = /^[.,!?;:…]/.test(after);
+      var out = tagged(txt.slice(a, b - (old ? old[0].length : 0)), ch, follow);
+      replaceRange(c.block, a, b, out);
+      setSel(c.block, a + out.length);
+      decorateSoon(); markDirty();
+      flash(ch.name + " is speaking");
+      return;
+    }
+
+    // caret right after a closed quote: tag it
+    var before = txt.slice(0, c.a);
+    var m = before.match(/“([^“”]*)”\s*$/);
+    if (m) {
+      var start = c.a - m[0].length;
+      var follow2 = /^[.,!?;:…]/.test(txt.slice(c.a));
+      var out2 = tagged(m[1], ch, follow2);
+      replaceRange(c.block, start, c.a, out2);
+      setSel(c.block, start + out2.length);
+      decorateSoon(); markDirty();
+      return;
+    }
+
+    // otherwise open a fresh line of dialogue
+    var target = c.block;
+    if (txt.trim()) target = newLineAfter(c.block, DEFAULT_TYPE[d.mode]);
+    openLine(target, ch);
+    afterStructural();
+  }
+
+  function openLine(block, ch) {
+    setSel(block, block.textContent.length);
+    insertText("“”");
+    setSel(block, block.textContent.length - 1);
+    pending = { id: ch.id, block: block };
+    renderCast();
+    decorateSoon();
+  }
+
+  /* close the open quote on the pending line; returns the speaker if they said something */
+  function finishPending() {
+    if (!pending) return null;
+    var p = pending, b = p.block, ch = castById(p.id);
+    pending = null;
+    b.classList.remove("speaking"); b.style.removeProperty("--who");
+    renderCast();
+    if (!editor.contains(b) || !ch) return null;
+    var txt = b.textContent;
+    var open = txt.lastIndexOf("“");
+    if (open < 0) return null;
+    var close = txt.indexOf("”", open);
+    if (close < 0) close = txt.length; else close += 1;
+    var core = txt.slice(open + 1, close - (txt[close - 1] === "”" ? 1 : 0));
+    if (!core.trim()) {
+      // empty quote: remove it and stop the conversation
+      replaceRange(b, open, close, "");
+      if (!b.textContent) setBlockText(b, "");
+      setSel(b, b.textContent.length);
+      return null;
+    }
+    var follow = /^[.,!?;:…]/.test(txt.slice(close));
+    var out = tagged(core, ch, follow);
+    replaceRange(b, open, close, out);
+    setSel(b, b.textContent.length);
+    return ch;
+  }
+
+  function remember(id) {
+    lastSpeakers = [id].concat(lastSpeakers.filter(function (x) { return x !== id; })).slice(0, 6);
+  }
+  function otherSpeaker(ch) {
+    var d = cur();
+    var prev = lastSpeakers.filter(function (x) { return x !== ch.id && castById(x); })[0];
+    if (prev) { remember(prev); return castById(prev); }
+    if (d.cast.length < 2) return null;
+    var i = d.cast.indexOf(ch);
+    var nx = d.cast[(i + 1) % d.cast.length];
+    remember(nx.id);
+    return nx;
+  }
+
+  function speakScript(ch, c) {
+    var b = c.block, txt = b.textContent, name = ch.name.toUpperCase();
+    if (!c.collapsed && c.block === c.endBlock) {
+      var a = c.a, e = c.b;
+      while (a < e && /\s/.test(txt[a])) a++;
+      while (e > a && /\s/.test(txt[e - 1])) e--;
+      var core = txt.slice(a, e).replace(/^[“"]|[”"]$/g, "").replace(/,$/, ".");
+      var pre = txt.slice(0, a).replace(/[“"]\s*$/, "").trim(), post = txt.slice(e).replace(/^[”"]/, "").trim();
+      var list = [];
+      if (pre) list.push({ t: b.dataset.t, x: pre });
+      list.push({ t: "character", x: name }, { t: "dialogue", x: core });
+      if (post) list.push({ t: "action", x: post });
+      var nodes = list.map(makeBlock);
+      nodes.forEach(function (n) { b.before(n); });
+      b.remove();
+      var dl = nodes[pre ? 2 : 1];
+      setSel(dl, dl.textContent.length);
+      afterStructural();
+      return;
+    }
+    var target = b;
+    if (txt.trim()) target = newLineAfter(b, "character");
+    target.dataset.t = "character";
+    setSel(target, 0);
+    insertText(name);
+    newLineAfter(target, "dialogue");
+    afterStructural();
+  }
+
+  /* ================================================================
+     Mode switching & conversion
+     ================================================================ */
+  function mapType(t, mode) {
+    if (TYPES[mode].indexOf(t) >= 0) return t;
+    if (mode === "prose") return t === "scene" ? "h" : "p";
+    if (mode === "script") return t === "h" ? "scene" : "action";
+    return "verse";
+  }
+  function titleCaseName(n, cast) {
+    var hit = (cast || []).filter(function (c) { return c.name.toUpperCase() === n.toUpperCase(); })[0];
+    if (hit) return hit.name;
+    return n.toLowerCase().replace(/(^|[\s\-'’])(\p{L})/gu, function (m, a, b) { return a + b.toUpperCase(); });
+  }
+
+  function convertBlocks(blocks, from, to, cast) {
+    if (from === to) return blocks.slice();
+    if (from === "script" && to !== "script") {
+      var prose = scriptToProse(blocks, cast);
+      return to === "poem" ? prose.filter(function (b) { return b.t === "p"; }).map(function (b) { return { t: "verse", x: b.x }; }) : prose;
+    }
+    if (to === "script") {
+      var src = from === "poem" ? blocks.map(function (b) { return { t: "p", x: b.x }; }) : blocks;
+      return proseToScript(src, cast);
+    }
+    if (to === "poem") return blocks.map(function (b) { return { t: "verse", x: b.x }; });
+    return blocks.filter(function (b, i, arr) { return b.x.trim() || (i > 0 && arr[i - 1].x.trim()); })
+      .map(function (b) { return { t: "p", x: b.x }; });
+  }
+
+  function proseToScript(blocks, cast) {
+    cast = cast || [];
+    var out = [], recent = [];
+    var NAME = "([\\p{Lu}][\\p{L}’'\\-]*|he|she|they|I|we)";
+    var afterRe = new RegExp("^\\s*,?\\s*(?:" + NAME + "\\s+(?:" + TAG_VERBS + ")|(?:" + TAG_VERBS + ")\\s+" + NAME + ")\\b[^.!?]*[.!?]?", "u");
+    var beforeRe = new RegExp(NAME + "\\s+(?:" + TAG_VERBS + ")\\b[^“]*?,?\\s*$", "u");
+    blocks.forEach(function (b) {
+      if (!b.x.trim()) return;
+      if (b.t === "h") { out.push({ t: "scene", x: b.x.toUpperCase() }); return; }
+      var txt = b.x;
+      var quotes = [], re = /“([^”]*)”?/g, m;
+      while ((m = re.exec(txt))) quotes.push({ s: m.index, e: m.index + m[0].length, q: m[1] });
+      if (!quotes.length) { out.push({ t: "action", x: txt.trim() }); return; }
+
+      var speaker = null, pre = txt.slice(0, quotes[0].s), post = txt.slice(quotes[quotes.length - 1].e);
+      var mid = [];
+      for (var i = 0; i < quotes.length - 1; i++) mid.push(txt.slice(quotes[i].e, quotes[i + 1].s));
+      var tryName = function (n) {
+        if (!n || /^(he|she|they|i|we)$/i.test(n)) return null;
+        return n;
+      };
+      var mA = post.match(afterRe);
+      if (mA) { speaker = tryName(mA[1] || mA[2]); post = post.slice(mA[0].length); }
+      if (!speaker) {
+        for (var j = 0; j < mid.length && !speaker; j++) {
+          var mm = mid[j].match(afterRe);
+          if (mm) { speaker = tryName(mm[1] || mm[2]); mid[j] = mid[j].slice(mm[0].length); }
+        }
+      }
+      var mB = pre.match(beforeRe);
+      if (mB) { if (!speaker) speaker = tryName(mB[1]); pre = pre.slice(0, mB.index); }
+      var narration = (pre + " " + mid.join(" ") + " " + post).replace(/\s+/g, " ").trim();
+      if (!speaker) {
+        var hit = cast.filter(function (c) { return new RegExp("\\b" + c.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b").test(narration); })[0];
+        if (hit) speaker = hit.name;
+      }
+      if (!speaker && recent.length >= 2) speaker = recent[1];
+      if (!speaker) speaker = "Voice";
+      recent = [speaker].concat(recent.filter(function (x) { return x !== speaker; }));
+
+      var line = quotes.map(function (q) { return q.q.trim(); }).join(" ").replace(/,$/, ".").replace(/,(\s)/g, ",$1");
+      if (pre.trim()) out.push({ t: "action", x: pre.trim() });
+      out.push({ t: "character", x: speaker.toUpperCase() });
+      out.push({ t: "dialogue", x: line });
+      var rest = (mid.join(" ") + " " + post).replace(/\s+/g, " ").trim();
+      if (rest && rest !== ".") out.push({ t: "action", x: rest });
+    });
+    return out.length ? out : [{ t: "action", x: "" }];
+  }
+
+  function scriptToProse(blocks, cast) {
+    var out = [];
+    for (var i = 0; i < blocks.length; i++) {
+      var b = blocks[i];
+      if (b.t === "character") {
+        var name = titleCaseName(b.x.replace(/\s*\(.*\)\s*$/, "").trim(), cast);
+        var lines = [], how = "";
+        while (i + 1 < blocks.length && (blocks[i + 1].t === "dialogue" || blocks[i + 1].t === "paren")) {
+          i++;
+          if (blocks[i].t === "paren") how = blocks[i].x.replace(/[()]/g, "").trim();
+          else lines.push(blocks[i].x.trim());
+        }
+        if (lines.length) out.push({ t: "p", x: tagged(lines.join(" "), { name: name }, false, how) });
+        continue;
+      }
+      if (b.t === "transition") continue;
+      if (b.t === "scene") { out.push({ t: "h", x: b.x }); continue; }
+      if (b.x.trim()) out.push({ t: "p", x: b.x });
+    }
+    return out.length ? out : [{ t: "p", x: "" }];
+  }
+
+  function switchMode(mode) {
+    var d = cur();
+    if (d.mode === mode) return;
+    flush(); collect();
+    var hasText = d.blocks.some(function (b) { return b.x.trim(); });
+    if (!hasText) { applyMode(mode, d.blocks.map(function (b) { return { t: mapType(b.t, mode), x: b.x }; })); return; }
+    var note = mode === "script"
+      ? "Convert turns tagged dialogue like “Hi,” says Jun. into a JUN character cue and a dialogue block. Everything else becomes action."
+      : d.mode === "script" && mode === "prose"
+        ? "Convert turns each character cue and dialogue block back into a quoted, tagged line of prose."
+        : "Convert re-flows the text for " + MODE_NAME[mode].toLowerCase() + ". Layout only keeps every line as it is.";
+    ask("Switch to " + MODE_NAME[mode] + "?", note, [
+      { label: "Cancel" },
+      { label: "Layout only", fn: function () { snapshotThen(mode, d.blocks.map(function (b) { return { t: mapType(b.t, mode), x: b.x, ph: b.ph }; })); } },
+      { label: "Convert", primary: true, fn: function () { snapshotThen(mode, convertBlocks(d.blocks, d.mode, mode, d.cast)); } }
+    ]);
+  }
+  function snapshotThen(mode, blocks) {
+    var d = cur(), snap = { mode: d.mode, blocks: JSON.parse(JSON.stringify(d.blocks)) };
+    applyMode(mode, blocks);
+    toast("Now in " + MODE_NAME[mode], "Undo", function () { applyMode(snap.mode, snap.blocks); });
+  }
+  function applyMode(mode, blocks) {
+    var d = cur();
+    pending = null;
+    d.mode = mode;
+    d.blocks = blocks.map(function (b) { var o = { t: b.t, x: b.x }; if (b.ph) o.ph = b.ph; if (b.syl) o.syl = b.syl; return o; });
+    if (!d.blocks.length) d.blocks = [{ t: DEFAULT_TYPE[mode], x: "" }];
+    d.updatedAt = now();
+    writeStore(); cloudPush(d);
+    renderAll();
+  }
+
+  /* ================================================================
+     Templates
+     ================================================================ */
+  function V(ph, syl) { return { t: "verse", x: "", ph: ph, syl: syl }; }
+  function B(t, ph) { return { t: t, x: "", ph: ph }; }
+  var STANZA = { t: "verse", x: "" };
+  var TEMPLATES = [
+    { group: "Poem", items: [
+      { name: "Haiku", note: "Three lines, a moment and a turn.", meta: "5 · 7 · 5", mode: "poem",
+        blocks: function () { return [V("five syllables: set the scene", 5), V("seven syllables: something moves", 7), V("five syllables: the turn", 5)]; } },
+      { name: "Tanka", note: "A haiku with two more lines of feeling.", meta: "5 · 7 · 5 · 7 · 7", mode: "poem",
+        blocks: function () { return [V("image", 5), V("image continues", 7), V("pivot", 5), V("feeling", 7), V("resolve", 7)]; } },
+      { name: "Limerick", note: "Bouncy, rude if possible.", meta: "AABBA", mode: "poem",
+        blocks: function () { return [V("A · There once was a…", 9), V("A · who…", 9), V("B · short line", 6), V("B · short line", 6), V("A · the punchline", 9)]; } },
+      { name: "Sonnet", note: "Shakespearean: three quatrains and a couplet.", meta: "ABAB CDCD EFEF GG · 10", mode: "poem",
+        blocks: function () {
+          var s = "ABABCDCDEFEFGG".split(""), out = [];
+          s.forEach(function (r, i) {
+            if (i && i % 4 === 0) out.push(STANZA);
+            out.push(V(r + (i === 12 ? " · the couplet turns it" : i === 0 ? " · ten syllables, da-DUM ×5" : ""), 10));
+          });
+          return out;
+        } },
+      { name: "Cinquain", note: "Five lines that grow, then snap shut.", meta: "2 · 4 · 6 · 8 · 2", mode: "poem",
+        blocks: function () { return [V("title", 2), V("describe it", 4), V("action", 6), V("feeling", 8), V("rename it", 2)]; } },
+      { name: "Chain poem", note: "Each line starts with the last word of the one before.", meta: "endless", mode: "poem",
+        blocks: function () { return [V("Begin anywhere…"), V("…start with the last word above"), V("…and again"), V("keep going until it stops")]; } },
+      { name: "Free verse", note: "No rules. Line breaks are your only tool.", meta: "open", mode: "poem",
+        blocks: function () { return [V("Start with something you saw today"), V(""), V("")]; } }
+    ] },
+    { group: "Prose", items: [
+      { name: "Flash fiction", note: "A whole story in under a thousand words.", meta: "goal 1,000", mode: "prose", goal: 1000,
+        blocks: function () { return [B("p", "Open in motion: someone wants something, right now."), B("p", "Complicate it. What’s in the way?"), B("p", "The turn: something changes that can’t be undone."), B("p", "End on an image, not an explanation.")]; } },
+      { name: "Short story", note: "Six beats from hook to resolution.", meta: "goal 5,000", mode: "prose", goal: 5000,
+        blocks: function () { return [B("h", "Hook"), B("p", "Who, where, and what’s wrong."), B("h", "Inciting incident"), B("p", "The thing that makes today different."), B("h", "Rising"), B("p", "Try, fail, try harder."), B("h", "Crisis"), B("p", "The choice with no good option."), B("h", "Climax"), B("p", "They choose."), B("h", "Resolution"), B("p", "The new normal.")]; } },
+      { name: "Dialogue drill", note: "Two characters, one argument. Adds J and L to the cast.", meta: "cast J · L", mode: "prose", cast: true,
+        blocks: function () { return [B("p", "One line of setting. Then tap J or L and let them argue.")]; } },
+      { name: "Character sketch", note: "Get to know someone before they speak.", meta: "profile", mode: "prose",
+        blocks: function () { return [B("h", "Name"), B("p", "And what people call them."), B("h", "Wants"), B("p", "Out loud."), B("h", "Needs"), B("p", "What they won’t admit."), B("h", "Voice"), B("p", "Three lines they would say.")]; } },
+      { name: "Letter", note: "Fiction told to one reader.", meta: "epistolary", mode: "prose",
+        blocks: function () { return [B("p", "Dear …,"), B("p", "Why you’re writing now."), B("p", "What you can’t say in person."), B("p", "Signed,")]; } },
+      { name: "Journal entry", note: "Today, honestly.", meta: "daily", mode: "prose",
+        blocks: function () { return [{ t: "h", x: new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }) }, B("p", "What happened."), B("p", "What you noticed."), B("p", "What you’re carrying into tomorrow.")]; } }
+    ] },
+    { group: "Script", items: [
+      { name: "Scene", note: "Heading, action, an exchange.", meta: "INT./EXT.", mode: "script",
+        blocks: function () { return [B("scene", "INT. LOCATION — DAY"), B("action", "What we see. Who’s here. Present tense."), B("character", "NAME"), B("dialogue", "What they say."), B("action", "")]; } },
+      { name: "Two-hander", note: "A scene for two. Adds J and L to the cast.", meta: "cast J · L", mode: "script", cast: true,
+        blocks: function () { return [B("scene", "INT. KITCHEN — NIGHT"), B("action", "Tap J or L in the dock to start their line.")]; } },
+      { name: "Cold open", note: "Hook the audience before the titles.", meta: "1–3 pp", mode: "script",
+        blocks: function () { return [{ t: "transition", x: "FADE IN:" }, B("scene", "EXT. SOMEWHERE STRIKING — NIGHT"), B("action", "An image we can’t look away from."), B("action", "Something goes wrong."), { t: "transition", x: "SMASH CUT TO:" }, B("scene", "TITLE CARD")]; } },
+      { name: "Short film", note: "Three scenes: set up, push, pay off.", meta: "5–10 pp", mode: "script",
+        blocks: function () { return [{ t: "transition", x: "FADE IN:" }, B("scene", "INT. SCENE ONE — DAY"), B("action", "Set up: normal life and what’s missing."), B("scene", "EXT. SCENE TWO — DAY"), B("action", "Push: the problem arrives."), B("scene", "INT. SCENE THREE — NIGHT"), B("action", "Pay off: they change, or they don’t."), { t: "transition", x: "FADE OUT." }]; } }
+    ] }
+  ];
+
+  function renderTemplates() {
+    var html = TEMPLATES.map(function (g, gi) {
+      return "<h3>" + g.group + "</h3><div class=\"tpl-grid\">" + g.items.map(function (t, ti) {
+        return "<button class=\"tpl\" data-tpl=\"" + gi + "." + ti + "\"><b>" + esc(t.name) + "</b><span>" + esc(t.note) + "</span><span class=\"meta\">" + esc(t.meta) + "</span></button>";
+      }).join("") + "</div>";
+    }).join("");
+    $("tplBody").innerHTML = html;
+  }
+  function defaultCast() {
+    return [{ id: uid(), name: "Jun", key: "J", color: "c2" }, { id: uid(), name: "Lena", key: "L", color: "c1" }];
+  }
+  function useTemplate(key) {
+    var ix = key.split("."), t = TEMPLATES[+ix[0]].items[+ix[1]];
+    var blocks = t.blocks();
+    var d = cur();
+    flush(); collect();
+    if ($("tplInsert").checked) {
+      if (t.cast && !d.cast.length) d.cast = defaultCast();
+      var conv = t.mode === d.mode ? blocks : blocks.map(function (b) { return { t: mapType(b.t, d.mode), x: b.x, ph: b.ph, syl: b.syl }; });
+      restoreSel();
+      var b = curBlock() || editor.lastElementChild;
+      var nodes = conv.map(makeBlock);
+      var anchor = b;
+      nodes.forEach(function (n) { anchor.after(n); anchor = n; });
+      if (!b.textContent) b.remove();
+      setSel(nodes[0], 0);
+      closeSheets();
+      afterStructural(); renderCast();
+      toast("Added " + t.name);
+      return;
+    }
+    var nd = newDoc(t.mode, t.name === "Journal entry" ? "Journal" : "Untitled " + t.name.toLowerCase(), blocks, { goal: t.goal || 0, cast: t.cast ? defaultCast() : [] });
+    open(nd.id);
+    closeSheets();
+    setTimeout(function () { editor.focus(); setSel(editor.firstElementChild, 0); }, 60);
+  }
+
+  /* ================================================================
+     Cast UI
+     ================================================================ */
+  function renderCast() {
+    var d = cur();
+    var html = "<span class=\"row-label\">Cast</span>";
+    d.cast.forEach(function (c, i) {
+      var live = pending && pending.id === c.id;
+      html += "<button class=\"chip" + (live ? " live" : "") + "\" data-speak=\"" + c.id + "\" style=\"--who:var(--" + c.color + ")\" title=\"" + esc(c.name) + (i < 9 ? " (Alt+" + (i + 1) + ")" : "") + "\" aria-label=\"Speak as " + esc(c.name) + "\">" +
+        "<span class=\"key\">" + esc(c.key) + "</span>" + esc(c.name) + "</button>";
+    });
+    html += "<button class=\"chip ghost\" id=\"castAdd\">" + (d.cast.length ? "Edit cast" : "+ Add characters") + "</button>";
+    if (d.cast.length && d.mode !== "script") {
+      html += "<span class=\"sep\"></span>";
+      html += "<button class=\"tool\" id=\"pingBtn\" aria-pressed=\"" + !!state.settings.pingpong + "\" title=\"After Enter, the other character speaks next\">⇄ Back and forth</button>";
+      html += "<select class=\"mini-select\" id=\"verbSel\" aria-label=\"Dialogue verb\">" +
+        ["auto"].concat(VERB_PRESENT).concat(["none"]).map(function (v) {
+          var label = v === "auto" ? "says / asks" : v === "none" ? "no tag" : (state.settings.tense === "past" ? PAST[v] : v);
+          return "<option value=\"" + v + "\"" + (state.settings.verb === v ? " selected" : "") + ">" + label + "</option>";
+        }).join("") + "</select>";
+    }
+    $("castRow").innerHTML = html;
+    $("tip").hidden = state.settings.tipSeen || !d.cast.length || d.mode === "script";
+  }
+
+  var editingCast = null, pickedColor = "c1";
+  function openCastSheet() {
+    editingCast = null;
+    fillCastForm();
+    renderCastList();
+    openSheet("castSheet");
+    setTimeout(function () { $("cName").focus(); }, 80);
+  }
+  function renderCastList() {
+    var d = cur();
+    $("castList").innerHTML = d.cast.map(function (c) {
+      return "<li style=\"--who:var(--" + c.color + ")\"><span class=\"key\">" + esc(c.key) + "</span><span class=\"nm\">" + esc(c.name) + "</span>" +
+        "<button data-cedit=\"" + c.id + "\">Edit</button><button data-cdel=\"" + c.id + "\">Remove</button></li>";
+    }).join("") || "<li><span class=\"nm\" style=\"color:var(--muted);font-weight:400\">No characters yet.</span></li>";
+  }
+  function fillCastForm(c) {
+    var d = cur();
+    var used = d.cast.map(function (x) { return x.color; });
+    pickedColor = c ? c.color : (COLORS.filter(function (x) { return used.indexOf(x) < 0; })[0] || COLORS[d.cast.length % COLORS.length]);
+    $("cName").value = c ? c.name : "";
+    $("cKey").value = c ? c.key : "";
+    $("castFormH").textContent = c ? "Edit " + c.name : "Add a character";
+    $("castSave").textContent = c ? "Save" : "Add";
+    $("castCancel").hidden = !c;
+    $("swatches").innerHTML = COLORS.map(function (k) {
+      return "<button type=\"button\" class=\"swatch\" data-sw=\"" + k + "\" style=\"--sw:var(--" + k + ")\" aria-label=\"Colour " + k.slice(1) + "\" aria-pressed=\"" + (k === pickedColor) + "\"></button>";
+    }).join("");
+  }
+
+  /* ================================================================
+     Sheets, drawer, toast
+     ================================================================ */
+  function openSheet(id) {
+    closeSheets(true);
+    $("sheetScrim").hidden = false;
+    $(id).hidden = false;
+  }
+  function closeSheets(keepScrim) {
+    ["tplSheet", "castSheet", "askSheet", "helpSheet"].forEach(function (s) { $(s).hidden = true; });
+    if (!keepScrim) $("sheetScrim").hidden = true;
+  }
+  function ask(title, text, buttons) {
+    $("askH").textContent = title;
+    $("askP").textContent = text;
+    var box = $("askBtns");
+    box.innerHTML = "";
+    buttons.forEach(function (b) {
+      var el = document.createElement("button");
+      el.className = "btn" + (b.primary ? " primary" : "") + (b.danger ? " danger" : "");
+      el.textContent = b.label;
+      el.addEventListener("click", function () { closeSheets(); if (b.fn) b.fn(); });
+      box.appendChild(el);
+    });
+    openSheet("askSheet");
+  }
+  function openDrawer() { flush(); renderLibrary(); $("drawer").hidden = false; $("drawerScrim").hidden = false; }
+  function closeDrawer() { $("drawer").hidden = true; $("drawerScrim").hidden = true; }
+
+  var toastTimer;
+  function toast(msg, actLabel, fn) {
+    $("toastMsg").textContent = msg;
+    var b = $("toastAct");
+    b.hidden = !actLabel;
+    b.textContent = actLabel || "";
+    b.onclick = function () { $("toast").hidden = true; if (fn) fn(); };
+    $("toast").hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { $("toast").hidden = true; }, actLabel ? 6000 : 2200);
+  }
+  var flashed = {};
+  function flash(msg) { if (flashed[msg]) return; flashed[msg] = 1; toast(msg); }
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); }
+
+  /* ================================================================
+     Library
+     ================================================================ */
+  function renderLibrary() {
+    var docs = sortedDocs();
+    $("docList").innerHTML = docs.map(function (d) {
+      var when = new Date(d.updatedAt);
+      var ago = relTime(when);
+      return "<li class=\"doc-item" + (d.id === state.currentId ? " on" : "") + "\" data-open=\"" + d.id + "\" tabindex=\"0\">" +
+        "<span class=\"dt\">" + esc(d.title || "Untitled") + "</span><span class=\"badge\">" + MODE_NAME[d.mode] + "</span>" +
+        "<span class=\"dm\">" + wordCount(d).toLocaleString() + " words · " + ago + "</span></li>";
+    }).join("");
+    $("goal").value = cur().goal || "";
+    $("setTheme").value = state.settings.theme;
+    $("setSmart").checked = !!state.settings.smart;
+    $("setTag").value = state.settings.tag;
+    $("setTense").value = state.settings.tense;
+    renderAccount();
+  }
+  function relTime(d) {
+    var s = (Date.now() - d.getTime()) / 1000;
+    if (s < 60) return "just now";
+    if (s < 3600) return Math.floor(s / 60) + " min ago";
+    if (s < 86400) return Math.floor(s / 3600) + " h ago";
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  }
+  function open(id) {
+    flush();
+    pending = null;
+    state.currentId = id;
+    writeStore();
+    renderAll();
+    closeDrawer();
+  }
+
+  /* ---------------- export / import ---------------- */
+  function plainText(d) {
+    if (d.mode === "script") return toFountain(d);
+    if (d.mode === "poem") return (d.title ? d.title + "\n\n" : "") + d.blocks.map(function (b) { return b.x; }).join("\n");
+    return (d.title ? d.title + "\n\n" : "") + d.blocks.filter(function (b) { return b.x.trim(); }).map(function (b) { return b.t === "h" ? b.x.toUpperCase() : b.x; }).join("\n\n");
+  }
+  function toFountain(d) {
+    var out = [];
+    if (d.title) out.push("Title: " + d.title, "");
+    d.blocks.forEach(function (b, i) {
+      var x = b.x.trim();
+      if (!x) return;
+      var prev = d.blocks[i - 1] ? d.blocks[i - 1].t : null;
+      if (b.t === "scene") out.push("", /^(INT|EXT|EST|I\/E)/i.test(x) ? x.toUpperCase() : "." + x.toUpperCase());
+      else if (b.t === "character") out.push("", x.toUpperCase());
+      else if (b.t === "paren") out.push(/^\(/.test(x) ? x : "(" + x + ")");
+      else if (b.t === "dialogue") out.push(x);
+      else if (b.t === "transition") out.push("", /TO:$/.test(x.toUpperCase()) ? x.toUpperCase() : "> " + x.toUpperCase());
+      else out.push("", x);
+      void prev;
+    });
+    return out.join("\n").replace(/^\n+/, "") + "\n";
+  }
+  function parseFountain(text) {
+    var lines = text.replace(/\r/g, "").split("\n"), out = [], i = 0;
+    while (i < lines.length && /^[A-Za-z ]+:/.test(lines[i])) { i++; while (i < lines.length && /^\s{2,}|\t/.test(lines[i])) i++; }
+    for (; i < lines.length; i++) {
+      var raw = lines[i], line = raw.trim();
+      if (!line) continue;
+      var prevBlank = i === 0 || !lines[i - 1].trim();
+      var next = lines[i + 1] != null ? lines[i + 1].trim() : "";
+      if (prevBlank && (/^(INT|EXT|EST|INT\.?\/EXT|I\/E)[.\s]/i.test(line) || /^\.[^.]/.test(line))) { out.push({ t: "scene", x: line.replace(/^\./, "") }); continue; }
+      if (prevBlank && (/^>/.test(line) && !/<$/.test(line) || (/TO:$/.test(line) && line === line.toUpperCase()))) { out.push({ t: "transition", x: line.replace(/^>\s*/, "") }); continue; }
+      if (prevBlank && next && (line === line.toUpperCase() && /\p{Lu}/u.test(line) || /^@/.test(line))) {
+        out.push({ t: "character", x: line.replace(/^@/, "") });
+        while (i + 1 < lines.length && lines[i + 1].trim()) {
+          i++;
+          var l = lines[i].trim();
+          out.push({ t: /^\(.*\)$/.test(l) ? "paren" : "dialogue", x: l });
+        }
+        continue;
+      }
+      out.push({ t: "action", x: line.replace(/^!/, "") });
+    }
+    return out;
+  }
+  function download(name, text) {
+    try {
+      var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+      toast("Downloading " + name);
+    } catch (e) { toast("Download isn’t available here. Use Copy text instead."); }
+  }
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast("Copied to clipboard"); }, function () { fallbackCopy(text); });
+    } else fallbackCopy(text);
+  }
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    var ok = false; try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    ta.remove();
+    toast(ok ? "Copied to clipboard" : "Couldn’t copy. Select the text and copy it yourself.");
+  }
+  function importFile(file) {
+    var rd = new FileReader();
+    rd.onload = function () {
+      var text = String(rd.result), name = file.name.replace(/\.[^.]+$/, "");
+      var d;
+      if (/\.fountain$/i.test(file.name)) {
+        var tm = text.match(/^Title:\s*(.+)$/m);
+        d = newDoc("script", tm ? tm[1].trim() : name, parseFountain(text));
+      } else {
+        var paras = text.replace(/\r/g, "").split(/\n\s*\n/).map(function (s) { return s.replace(/\n/g, " ").trim(); }).filter(Boolean);
+        var blocks = paras.map(function (p) { var h = p.match(/^#{1,6}\s+(.*)$/); return h ? { t: "h", x: h[1] } : { t: "p", x: p }; });
+        d = newDoc("prose", name, blocks.length ? blocks : undefined);
+      }
+      open(d.id);
+      toast("Opened " + file.name);
+    };
+    rd.readAsText(file);
+  }
+
+  /* ================================================================
+     Cloud: Google sign-in + Firestore (users/{uid}/docs/{docId})
+     ================================================================ */
+  function renderAccount() {
+    var el = $("account");
+    if (!FIREBASE_CONFIG) {
+      el.innerHTML = "<p>Your writing is saved in this browser. Google sign-in and cloud sync are ready to switch on once a Firebase project is connected (see the README).</p>" +
+        "<button class=\"btn\" disabled>Sign in with Google</button>";
+      return;
+    }
+    if (cloud.error) { el.innerHTML = "<p>Cloud sync couldn’t start: " + esc(cloud.error) + "</p>"; return; }
+    if (!cloud.ready) { el.innerHTML = "<p>Connecting…</p>"; return; }
+    if (cloud.user) {
+      el.innerHTML = "<p>Signed in as <b style=\"color:var(--ink)\">" + esc(cloud.user.displayName || cloud.user.email) + "</b>. Changes sync to your account.</p>" +
+        "<div class=\"btn-row\"><button class=\"btn\" id=\"syncNow\">Sync now</button><button class=\"btn\" id=\"signOut\">Sign out</button></div>";
+    } else {
+      el.innerHTML = "<p>Sign in to keep your writing in your account and open it on any device.</p>" +
+        "<button class=\"btn primary\" id=\"signIn\">Sign in with Google</button>";
+    }
+  }
+  function initCloud() {
+    if (!FIREBASE_CONFIG) return;
+    var base = "https://www.gstatic.com/firebasejs/" + FIREBASE_VERSION + "/";
+    Promise.all([import(base + "firebase-app.js"), import(base + "firebase-auth.js"), import(base + "firebase-firestore.js")])
+      .then(function (mods) {
+        var app = mods[0].initializeApp(FIREBASE_CONFIG);
+        var A = mods[1], F = mods[2];
+        cloud.api = { A: A, F: F, auth: A.getAuth(app), db: F.getFirestore(app) };
+        cloud.ready = true;
+        A.getRedirectResult(cloud.api.auth).catch(function () {});
+        A.onAuthStateChanged(cloud.api.auth, function (u) {
+          cloud.user = u;
+          renderAccount();
+          if (u) cloudPull();
+        });
+        renderAccount();
+      })
+      .catch(function (e) { cloud.error = e.message || "network error"; renderAccount(); });
+  }
+  function signIn() {
+    var A = cloud.api.A, prov = new A.GoogleAuthProvider();
+    A.signInWithPopup(cloud.api.auth, prov).catch(function (e) {
+      if (/popup|operation-not-supported/.test(e.code || "")) A.signInWithRedirect(cloud.api.auth, prov);
+      else toast("Sign-in failed: " + (e.code || e.message));
+    });
+  }
+  function userCol() { return cloud.api.F.collection(cloud.api.db, "users", cloud.user.uid, "docs"); }
+  function cloudPush(d) {
+    if (!d || !cloud.user) return;
+    var F = cloud.api.F;
+    F.setDoc(F.doc(userCol(), d.id), JSON.parse(JSON.stringify(d))).catch(function (e) { toast("Sync failed: " + (e.code || e.message)); });
+  }
+  function cloudPull() {
+    var F = cloud.api.F;
+    F.getDocs(userCol()).then(function (snap) {
+      var remote = {};
+      snap.forEach(function (s) { var r = s.data(); remote[r.id] = r; });
+      Object.keys(remote).forEach(function (id) {
+        var r = remote[id], l = state.docs[id];
+        if (!l || r.updatedAt > l.updatedAt) state.docs[id] = r;
+      });
+      Object.keys(state.docs).forEach(function (id) {
+        var l = state.docs[id], r = remote[id];
+        if (!r || l.updatedAt > r.updatedAt) cloudPush(l);
+      });
+      if (!state.docs[state.currentId] || state.docs[state.currentId].deleted) state.currentId = sortedDocs()[0].id;
+      writeStore(); renderAll();
+      toast("Synced with your account");
+    }).catch(function (e) { toast("Sync failed: " + (e.code || e.message)); });
+  }
+
+  /* ================================================================
+     Theme & viewport
+     ================================================================ */
+  function applyTheme() {
+    var t = state.settings.theme;
+    if (t === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", t);
+  }
+  function cycleTheme() {
+    var dark = state.settings.theme === "dark" || (state.settings.theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+    state.settings.theme = dark ? "light" : "dark";
+    applyTheme(); writeStore();
+    toast(dark ? "Light mode" : "Dark mode");
+  }
+  function fitViewport() {
+    var vv = window.visualViewport;
+    if (!vv) return;
+    var root = document.documentElement;
+    var pad = parseFloat(getComputedStyle(root).paddingTop) + parseFloat(getComputedStyle(root).paddingBottom) || 0;
+    root.style.setProperty("--vvh", (vv.height - pad) + "px");
+    root.style.setProperty("--vvtop", vv.offsetTop + "px");
+    if (document.activeElement === editor) keepCaretVisible();
+  }
+
+  /* ================================================================
+     Rendering
+     ================================================================ */
+  function renderAll() {
+    var d = cur();
+    $("title").value = d.title || "";
+    document.querySelectorAll(".seg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.mode === d.mode)); });
+    document.querySelectorAll("[data-when]").forEach(function (el) { el.hidden = el.dataset.when !== d.mode; });
+    renderEditor();
+    renderCast();
+    updateStat();
+    syncTypeButtons();
+  }
+  function syncTypeButtons() {
+    var b = curBlock();
+    var t = b ? b.dataset.t : null;
+    document.querySelectorAll("[data-type]").forEach(function (el) { el.setAttribute("aria-pressed", String(el.dataset.type === t)); });
+  }
+  function setType(t) {
+    restoreSel();
+    var c = caretInfo();
+    if (!c) return;
+    var blocks = [c.block], n = c.block;
+    while (n !== c.endBlock && n.nextElementSibling) { n = n.nextElementSibling; blocks.push(n); }
+    blocks.forEach(function (b) { b.dataset.t = t; });
+    decorateSoon(); markDirty(); syncTypeButtons();
+  }
+
+  /* ================================================================
+     Events
+     ================================================================ */
+  // keep the editor's selection when tapping the dock (critical on phones)
+  $("dock").addEventListener("pointerdown", function (e) {
+    if (e.target.closest("button") && !e.target.closest("#castAdd,#tplBtn,#tipClose")) e.preventDefault();
+  });
+  $("dock").addEventListener("mousedown", function (e) {
+    if (e.target.closest("button") && !e.target.closest("#castAdd,#tplBtn,#tipClose")) e.preventDefault();
+  });
+
+  $("dock").addEventListener("click", function (e) {
+    var t = e.target.closest("button,select");
+    if (!t) return;
+    if (t.dataset.speak) { speak(t.dataset.speak); return; }
+    if (t.id === "castAdd") { openCastSheet(); return; }
+    if (t.id === "tplBtn") { renderTemplates(); openSheet("tplSheet"); return; }
+    if (t.id === "tipClose") { state.settings.tipSeen = true; writeStore(); $("tip").hidden = true; return; }
+    if (t.id === "pingBtn") {
+      state.settings.pingpong = !state.settings.pingpong; writeStore();
+      t.setAttribute("aria-pressed", String(state.settings.pingpong));
+      toast(state.settings.pingpong ? "Back and forth on: Enter hands the next line over" : "Back and forth off");
+      return;
+    }
+    if (t.dataset.act === "quote") { quoteSelection("“", "”"); return; }
+    if (t.dataset.act === "squote") { quoteSelection("‘", "’"); return; }
+    if (t.dataset.act === "ins") { restoreSel(); insertText(t.dataset.text); markDirty(); return; }
+    if (t.dataset.type) { setType(t.dataset.type); return; }
+  });
+  $("castRow").addEventListener("change", function (e) {
+    if (e.target.id === "verbSel") { state.settings.verb = e.target.value; writeStore(); restoreSel(); }
+  });
+
+  editor.addEventListener("beforeinput", function (e) {
+    var it = e.inputType;
+    if (it === "insertParagraph" || it === "insertLineBreak") {
+      e.preventDefault();
+      handleEnter();
+      return;
+    }
+    if (it === "insertText" && state.settings.smart && (e.data === "\"" || e.data === "'")) {
+      var c = caretInfo();
+      if (!c) return;
+      var prev = c.a > 0 ? c.block.textContent[c.a - 1] : "";
+      var opening = !prev || /[\s(\[{“‘—–-]/.test(prev);
+      e.preventDefault();
+      if (!c.collapsed) document.execCommand("delete");
+      insertText(e.data === "\"" ? (opening ? "“" : "”") : (opening ? "‘" : "’"));
+    }
+  });
+
+  editor.addEventListener("input", function (e) {
+    if (e.inputType === "insertParagraph" || e.inputType === "insertFromPaste") { ensureBlocks(); }
+    else if (editor.querySelector(":scope > :not(p), :scope > p *:not(br)") || editor.firstChild && editor.firstChild.nodeType === 3 || !editor.firstElementChild) ensureBlocks();
+    var d = cur(), b = curBlock();
+    if (b && d.mode === "script" && b.dataset.t === "action") {
+      var x = b.textContent;
+      if (/^(INT|EXT|EST|INT\.\/EXT|I\/E)[.\s]/i.test(x)) { b.dataset.t = "scene"; syncTypeButtons(); }
+      else if (/^[A-Z .]+ TO:$/.test(x)) { b.dataset.t = "transition"; syncTypeButtons(); }
+    }
+    if (b && d.mode === "script" && b.dataset.t === "dialogue" && /^\(/.test(b.textContent) && b.textContent.length === 1) { b.dataset.t = "paren"; syncTypeButtons(); }
+    if (pending && pending.block && !pending.block.textContent.includes("“")) { pending = null; renderCast(); }
+    decorateSoon();
+    markDirty();
+  });
+
+  editor.addEventListener("keydown", function (e) {
+    var d = cur();
+    if (e.key === "Tab" && d.mode === "script") {
+      e.preventDefault();
+      var b = curBlock(); if (!b) return;
+      var i = CYCLE.indexOf(b.dataset.t);
+      b.dataset.t = CYCLE[(i + (e.shiftKey ? CYCLE.length - 1 : 1)) % CYCLE.length];
+      decorateSoon(); markDirty(); syncTypeButtons();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "'" || e.key === "\"")) { e.preventDefault(); quoteSelection("“", "”"); return; }
+    if (e.altKey && /^Digit[1-9]$/.test(e.code)) {
+      var ch = d.cast[+e.code.slice(5) - 1];
+      if (ch) { e.preventDefault(); speak(ch.id); }
+      return;
+    }
+    if (e.key === "Escape" && pending) { pending.block.classList.remove("speaking"); pending = null; renderCast(); }
+  });
+
+  editor.addEventListener("paste", function (e) {
+    var text = (e.clipboardData || window.clipboardData).getData("text/plain");
+    e.preventDefault();
+    if (!text) return;
+    var d = cur();
+    var lines = text.replace(/\r/g, "").split("\n");
+    if (lines.length === 1) { insertText(text); return; }
+    var c = caretInfo(); if (!c) return;
+    if (!c.collapsed) { document.execCommand("delete"); c = caretInfo(); }
+    var b = c.block, full = b.textContent, tail = full.slice(c.a);
+    var blocks;
+    if (d.mode === "script") blocks = parseFountain(text);
+    else if (d.mode === "poem") blocks = lines.map(function (l) { return { t: "verse", x: l }; });
+    else blocks = text.replace(/\r/g, "").split(/\n\s*\n|\n/).map(function (s) { return s.trim(); }).filter(Boolean).map(function (s) { return { t: "p", x: s }; });
+    if (!blocks.length) return;
+    setBlockText(b, full.slice(0, c.a) + blocks[0].x);
+    var anchor = b, last = b;
+    blocks.slice(1).forEach(function (nb) { var n = makeBlock(nb); anchor.after(n); anchor = n; last = n; });
+    var pos = last.textContent.length;
+    setBlockText(last, last.textContent + tail);
+    setSel(last, pos);
+    afterStructural();
+  });
+
+  document.addEventListener("selectionchange", function () {
+    var s = getSelection();
+    if (s.rangeCount && editor.contains(s.anchorNode)) {
+      savedRange = s.getRangeAt(0).cloneRange();
+      syncTypeButtons();
+      if (pending && curBlock() !== pending.block) {
+        pending.block.classList.remove("speaking"); pending.block.style.removeProperty("--who");
+        pending = null; renderCast();
+      }
+    }
+  });
+
+  $("title").addEventListener("input", function () { cur().title = this.value; markDirty(); });
+  $("title").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); editor.focus(); } });
+  document.querySelectorAll(".seg button").forEach(function (b) { b.addEventListener("click", function () { switchMode(b.dataset.mode); }); });
+  $("themeBtn").addEventListener("click", cycleTheme);
+  $("helpBtn").addEventListener("click", function () { openSheet("helpSheet"); });
+  $("libBtn").addEventListener("click", openDrawer);
+  $("drawerScrim").addEventListener("click", closeDrawer);
+  $("sheetScrim").addEventListener("click", function () { closeSheets(); });
+  document.addEventListener("click", function (e) { if (e.target.closest("[data-close]")) closeSheets(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { closeSheets(); closeDrawer(); }
+  });
+
+  $("tplBody").addEventListener("click", function (e) {
+    var t = e.target.closest("[data-tpl]");
+    if (t) useTemplate(t.dataset.tpl);
+  });
+
+  // cast sheet
+  $("swatches").addEventListener("click", function (e) {
+    var s = e.target.closest("[data-sw]"); if (!s) return;
+    pickedColor = s.dataset.sw;
+    document.querySelectorAll("[data-sw]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === s)); });
+  });
+  $("cName").addEventListener("input", function () {
+    if (!editingCast || !$("cKey").dataset.touched) $("cKey").value = (this.value.trim()[0] || "").toUpperCase();
+  });
+  $("cKey").addEventListener("input", function () { this.dataset.touched = "1"; });
+  $("castForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var d = cur(), name = $("cName").value.trim();
+    if (!name) return;
+    var key = ($("cKey").value.trim() || name[0]).slice(0, 3);
+    if (editingCast) {
+      var c = castById(editingCast);
+      var oldName = c.name;
+      c.name = name; c.key = key; c.color = pickedColor;
+      if (oldName !== name && d.mode === "script") {
+        Array.prototype.forEach.call(editor.children, function (p) {
+          if (p.dataset.t === "character" && p.textContent.trim().toUpperCase() === oldName.toUpperCase()) setBlockText(p, name.toUpperCase());
+        });
+      }
+    } else {
+      d.cast.push({ id: uid(), name: name, key: key, color: pickedColor });
+    }
+    delete $("cKey").dataset.touched;
+    editingCast = null;
+    fillCastForm(); renderCastList(); renderCast(); decorateSoon(); markDirty();
+    $("cName").focus();
+  });
+  $("castCancel").addEventListener("click", function () { editingCast = null; fillCastForm(); });
+  $("castList").addEventListener("click", function (e) {
+    var ed = e.target.closest("[data-cedit]"), del = e.target.closest("[data-cdel]");
+    if (ed) { editingCast = ed.dataset.cedit; fillCastForm(castById(editingCast)); $("cName").focus(); }
+    if (del) {
+      var d = cur();
+      d.cast = d.cast.filter(function (c) { return c.id !== del.dataset.cdel; });
+      if (pending && pending.id === del.dataset.cdel) pending = null;
+      renderCastList(); renderCast(); markDirty();
+    }
+  });
+
+  // drawer
+  $("docList").addEventListener("click", function (e) { var li = e.target.closest("[data-open]"); if (li) open(li.dataset.open); });
+  $("docList").addEventListener("keydown", function (e) { var li = e.target.closest("[data-open]"); if (li && e.key === "Enter") open(li.dataset.open); });
+  document.querySelectorAll("[data-new]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var d = newDoc(b.dataset.new, "");
+      open(d.id);
+      setTimeout(function () { $("title").focus(); }, 60);
+    });
+  });
+  $("goal").addEventListener("input", function () { cur().goal = Math.max(0, parseInt(this.value, 10) || 0); markDirty(); updateStat(); });
+  $("copyBtn").addEventListener("click", function () { flush(); copyText(plainText(cur())); });
+  $("exportBtn").addEventListener("click", function () {
+    flush();
+    var d = cur(), base = (d.title || "untitled").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").toLowerCase() || "untitled";
+    download(base + (d.mode === "script" ? ".fountain" : d.mode === "poem" ? ".txt" : ".md"),
+      d.mode === "prose" ? (d.title ? "# " + d.title + "\n\n" : "") + d.blocks.filter(function (b) { return b.x.trim(); }).map(function (b) { return b.t === "h" ? "## " + b.x : b.x; }).join("\n\n") + "\n" : plainText(d));
+  });
+  $("dupBtn").addEventListener("click", function () {
+    flush();
+    var d = cur(), c = JSON.parse(JSON.stringify(d));
+    var nd = newDoc(d.mode, (d.title || "Untitled") + " (copy)", c.blocks, { cast: c.cast, goal: c.goal });
+    open(nd.id);
+    toast("Duplicated");
+  });
+  $("delBtn").addEventListener("click", function () {
+    var d = cur();
+    ask("Delete “" + (d.title || "Untitled") + "”?", "It will be removed from this device" + (cloud.user ? " and your account" : "") + ". This can’t be undone.", [
+      { label: "Cancel" },
+      { label: "Delete", danger: true, fn: function () {
+        d.deleted = true; d.updatedAt = now(); d.blocks = []; d.cast = [];
+        cloudPush(d);
+        if (!cloud.user) delete state.docs[d.id];
+        var rest = sortedDocs();
+        state.currentId = rest.length ? rest[0].id : newDoc("prose", "").id;
+        writeStore(); renderAll(); renderLibrary();
+        toast("Deleted");
+      } }
+    ]);
+  });
+  $("importBtn").addEventListener("click", function () { $("importInput").click(); });
+  $("importInput").addEventListener("change", function () { if (this.files[0]) importFile(this.files[0]); this.value = ""; });
+  $("setTheme").addEventListener("change", function () { state.settings.theme = this.value; applyTheme(); writeStore(); });
+  $("setSmart").addEventListener("change", function () { state.settings.smart = this.checked; writeStore(); });
+  $("setTag").addEventListener("change", function () { state.settings.tag = this.value; writeStore(); });
+  $("setTense").addEventListener("change", function () { state.settings.tense = this.value; writeStore(); renderCast(); });
+  $("account").addEventListener("click", function (e) {
+    var t = e.target.closest("button"); if (!t) return;
+    if (t.id === "signIn") signIn();
+    if (t.id === "signOut") cloud.api.A.signOut(cloud.api.auth).then(function () { toast("Signed out. Your writing stays on this device."); });
+    if (t.id === "syncNow") cloudPull();
+  });
+
+  window.addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", function () { if (document.hidden) flush(); });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", fitViewport);
+    window.visualViewport.addEventListener("scroll", fitViewport);
+  }
+
+  /* ---------------- boot ---------------- */
+  try { document.execCommand("defaultParagraphSeparator", false, "p"); } catch (e) { /* ignore */ }
+  loadStore();
+  applyTheme();
+  renderAll();
+  renderAccount();
+  fitViewport();
+  initCloud();
+
+  // exposed for tests
+  window.__inkling = { state: state, convertBlocks: convertBlocks, tagged: tagged, syllables: syllables, parseFountain: parseFountain, toFountain: toFountain };
+})();
+</script>
+</body>
+</html>
