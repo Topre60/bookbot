@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' file: data:; img-src 'self' data:">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inkling</title>
+<link rel="stylesheet" href="../node_modules/@fontsource/figtree/400.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/figtree/500.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/figtree/600.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/figtree/700.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/newsreader/400.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/newsreader/400-italic.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/newsreader/500.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/courier-prime/400.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/courier-prime/700.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="win" id="win">
+  <header class="titlebar">
+    <div class="tb-left">
+      <button class="icon-btn" id="sideBtn" title="Toggle library (Ctrl/⌘ + \)" aria-label="Toggle library">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9 4.5v15"/></svg>
+      </button>
+        <button class="tool" id="paletteBtn" title="Command palette (Ctrl/⌘ + K)"><span class="kbd-hint" id="paletteKbd">Ctrl K</span></button>
+        <button class="tool" id="exportBtn">Export</button>
+        <button class="tool accent" id="tplBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 13.5v6M13.5 16.5h6"/></svg>
+          Templates
+        </button>
+    </div>
+    <div class="tb-center">
+      <input id="title" class="title-input" type="text" placeholder="Untitled" aria-label="Title" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="tb-right">
+      <div class="seg" role="group" aria-label="Writing mode">
+        <button data-mode="prose" aria-pressed="true">Prose</button>
+        <button data-mode="script" aria-pressed="false">Script</button>
+        <button data-mode="poem" aria-pressed="false">Poem</button>
+      </div>
+      <button class="icon-btn" id="focusBtn" title="Focus mode (Ctrl/⌘ + Shift + F)" aria-label="Focus mode">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/></svg>
+      </button>
+      <button class="icon-btn" id="themeBtn" title="Light / dark" aria-label="Switch theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+      </button>
+      <button class="icon-btn" id="panelBtn" title="Toggle side panel" aria-label="Toggle side panel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M15 4.5v15"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="body">
+    <!-- library -->
+    <aside class="side" id="side" aria-label="Library">
+      <div class="side-top">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+          <input id="search" type="search" placeholder="Search your writing" aria-label="Search">
+        </div>
+        <div class="new-row">
+          <button class="btn primary sm" data-new="prose">+ Prose</button>
+          <button class="btn sm" data-new="script">+ Script</button>
+          <button class="btn sm" data-new="poem">+ Poem</button>
+        </div>
+      </div>
+      <div class="side-filter" role="group" aria-label="Filter">
+        <button data-filter="all" aria-pressed="true">All</button>
+        <button data-filter="prose" aria-pressed="false">Prose</button>
+        <button data-filter="script" aria-pressed="false">Script</button>
+        <button data-filter="poem" aria-pressed="false">Poem</button>
+      </div>
+      <ul class="doc-list" id="docList"></ul>
+      <div class="side-foot">
+        <button class="folder" id="folderBtn" title="Show library folder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3.5 7.5A2 2 0 0 1 5.5 5.5h4l2 2h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg>
+          <span id="folderPath">Library</span>
+        </button>
+        <button class="icon-btn sm" id="settingsBtn" title="Settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- writing -->
+    <main class="center">
+      <div class="formatbar" id="formatbar">
+        <button class="tool icon" data-act="undo" title="Undo" aria-label="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+        <button class="tool icon" data-act="redo" title="Redo" aria-label="Redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+        <span class="sep"></span>
+        <button class="tool q" data-act="quote" title="Quote selection (Ctrl/⌘ + ')">“ ”</button>
+        <button class="tool q" data-act="squote" title="Single quotes">‘ ’</button>
+        <button class="tool q" data-act="ins" data-text="—" title="Em dash">—</button>
+        <button class="tool q" data-act="ins" data-text="…" title="Ellipsis">…</button>
+        <span class="sep" data-when="script"></span>
+        <button class="tool" data-type="scene" data-when="script" title="Ctrl/⌘ + 1">Scene</button>
+        <button class="tool" data-type="action" data-when="script" title="Ctrl/⌘ + 2">Action</button>
+        <button class="tool" data-type="character" data-when="script" title="Ctrl/⌘ + 3">Character</button>
+        <button class="tool" data-type="paren" data-when="script" title="Ctrl/⌘ + 4">(Paren)</button>
+        <button class="tool" data-type="dialogue" data-when="script" title="Ctrl/⌘ + 5">Dialogue</button>
+        <button class="tool" data-type="transition" data-when="script" title="Ctrl/⌘ + 6">Transition</button>
+        <span class="sep" data-when="prose"></span>
+        <button class="tool" data-type="p" data-when="prose">¶ Text</button>
+        <button class="tool" data-type="h" data-when="prose">Heading</button>
+      </div>
+      <div class="caststrip" id="castRow" aria-label="Cast"></div>
+      <div class="scroll" id="scroll">
+        <div class="page" id="page">
+          <div id="editor" class="editor m-prose" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Your writing"></div>
+        </div>
+      </div>
+      <footer class="statusbar" id="statusbar">
+        <span id="stWords"></span>
+        <span class="goal" id="stGoalWrap" hidden><span class="goal-bar"><span id="stGoal"></span></span><span id="stGoalTxt"></span></span>
+        <span id="stExtra"></span>
+        <span class="grow"></span>
+        <span id="stSession"></span>
+        <span id="stSaved"></span>
+      </footer>
+    </main>
+
+    <!-- side panel -->
+    <aside class="panel" id="panel" aria-label="Side panel">
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="cast" aria-selected="true">Cast</button>
+        <button role="tab" data-tab="outline" aria-selected="false">Outline</button>
+        <button role="tab" data-tab="stats" aria-selected="false">Stats</button>
+      </div>
+      <div class="tab-body" id="tabCast"></div>
+      <div class="tab-body" id="tabOutline" hidden></div>
+      <div class="tab-body" id="tabStats" hidden></div>
+    </aside>
+  </div>
+</div>
+
+<!-- modals -->
+<div class="scrim" id="scrim" hidden></div>
+
+<section class="modal wide" id="tplModal" hidden aria-label="Templates">
+  <div class="modal-head"><h2>Templates</h2><button class="icon-btn sm" data-close aria-label="Close">✕</button></div>
+  <p class="lede">Each one starts a new piece with the structure laid out. Grey hints disappear as you type.</p>
+  <label class="inline-opt"><input type="checkbox" class="switch" id="tplInsert"> Add to this piece at the cursor instead</label>
+  <div id="tplBody"></div>
+</section>
+
+<section class="modal" id="exportModal" hidden aria-label="Export">
+  <div class="modal-head"><h2>Export</h2><button class="icon-btn sm" data-close aria-label="Close">✕</button></div>
+  <p class="lede" id="exportLede"></p>
+  <div class="export-grid">
+    <button class="tpl" data-export="pdf"><b>PDF</b><span id="pdfNote">Formatted for print.</span></button>
+    <button class="tpl" data-export="fountain" data-when="script"><b>Fountain</b><span>Opens in Final Draft, Highland, WriterSolo, Fade In.</span></button>
+    <button class="tpl" data-export="md"><b>Markdown</b><span>Headings and paragraphs, for anywhere.</span></button>
+    <button class="tpl" data-export="txt"><b>Plain text</b><span>Just the words.</span></button>
+    <button class="tpl" data-export="copy"><b>Copy</b><span>Plain text to the clipboard.</span></button>
+  </div>
+</section>
+
+<section class="modal" id="askModal" hidden aria-label="Confirm">
+  <div class="modal-head"><h2 id="askH"></h2></div>
+  <p class="lede" id="askP"></p>
+  <div class="btn-row end" id="askBtns"></div>
+</section>
+
+<section class="modal" id="settingsModal" hidden aria-label="Settings">
+  <div class="modal-head"><h2>Settings</h2><button class="icon-btn sm" data-close aria-label="Close">✕</button></div>
+  <div class="opt"><label for="setTheme">Theme</label>
+    <select id="setTheme"><option value="system">Match system</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+  <div class="opt"><label for="setSmart">Curly quotes as you type</label><input type="checkbox" class="switch" id="setSmart"></div>
+  <div class="opt"><label for="setTag">Dialogue tag</label>
+    <select id="setTag"><option value="verb-name">“Hi,” says Jun.</option><option value="name-verb">“Hi,” Jun says.</option><option value="before">Jun says, “Hi.”</option></select></div>
+  <div class="opt"><label for="setTense">Tag tense</label>
+    <select id="setTense"><option value="present">Present (says)</option><option value="past">Past (said)</option></select></div>
+  <div class="opt"><label for="setAuthor">Your name on title pages</label><input type="text" id="setAuthor" placeholder="Written by…"></div>
+  <div class="opt"><label for="setSize">Text size</label>
+    <select id="setSize"><option value="0.92">Small</option><option value="1">Medium</option><option value="1.12">Large</option><option value="1.25">Extra large</option></select></div>
+  <div class="opt col"><span>Library folder</span>
+    <code id="setFolder"></code>
+    <div class="btn-row"><button class="btn sm" id="revealBtn">Show in folder</button><button class="btn sm" id="chooseFolderBtn">Change…</button></div>
+    <p class="hint">Pick a folder inside iCloud Drive, Dropbox or OneDrive and your writing follows you between computers.</p>
+  </div>
+</section>
+
+<section class="modal" id="helpModal" hidden aria-label="How Inkling works">
+  <div class="modal-head"><h2>How Inkling works</h2><button class="icon-btn sm" data-close aria-label="Close">✕</button></div>
+  <h3>Dialogue, fast</h3>
+  <ol class="help-list">
+    <li>Add characters in the <b>Cast</b> panel. Each gets a one-letter button and a shortcut: <kbd>Alt</kbd>+<kbd>1</kbd>, <kbd>Alt</kbd>+<kbd>2</kbd>…</li>
+    <li>Press <kbd>Alt</kbd>+<kbd>1</kbd> (or click J). Type the line and press <kbd>Enter</kbd>:<div class="demo">“Did you bring it?” asks Jun.</div></li>
+    <li>Turn on <b>⇄ Back and forth</b> and Enter hands the next line to the other character. Enter on an empty quote stops.</li>
+    <li>Select a line you already wrote and press a character’s key to quote and tag it.</li>
+  </ol>
+  <h3>Screenplay</h3>
+  <ol class="help-list">
+    <li><kbd>Tab</kbd> cycles elements; <kbd>Ctrl/⌘</kbd>+<kbd>1</kbd>–<kbd>6</kbd> jumps to one. Enter picks the next element for you.</li>
+    <li>Lines starting with INT. or EXT. become scene headings. Export PDF uses standard screenplay margins on US Letter.</li>
+  </ol>
+  <h3>Everything else</h3>
+  <ul class="help-list">
+    <li><kbd>Ctrl/⌘</kbd>+<kbd>K</kbd> command palette: jump to any piece or run any command.</li>
+    <li><kbd>Ctrl/⌘</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> focus mode. <kbd>Ctrl/⌘</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> typewriter scrolling.</li>
+    <li>Each piece is a <code>.inkling</code> file in your library folder, saved as you type.</li>
+  </ul>
+</section>
+
+<section class="palette" id="palette" hidden aria-label="Command palette">
+  <input id="palInput" type="text" placeholder="Type a command or the name of a piece" autocomplete="off" spellcheck="false">
+  <ul id="palList" role="listbox"></ul>
+</section>
+
+<div class="toast" id="toast" hidden role="status"><span id="toastMsg"></span><button id="toastAct" hidden></button></div>
+
+<script src="app.js"></script>
+</body>
+</html>

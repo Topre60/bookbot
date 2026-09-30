@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs><filter id="s" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-opacity=".28"/></filter></defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="#2f47b5" filter="url(#s)"/>
+  <g transform="translate(100 100) scale(1.609)" fill="#f8f9f5">
+    <circle cx="196" cy="262" r="58"/>
+    <path d="M150 250c0-70 36-118 104-138l10 26c-44 18-64 52-62 104z"/>
+    <circle cx="346" cy="262" r="58"/>
+    <path d="M300 250c0-70 36-118 104-138l10 26c-44 18-64 52-62 104z"/>
+    <rect x="136" y="380" width="240" height="14" rx="7" opacity=".55"/>
+  </g>
+</svg>

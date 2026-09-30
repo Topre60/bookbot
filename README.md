@@ -3,8 +3,22 @@
 A writing app for prose, screenplays and poems. Built as the next step after
 *typie*, focused only on writing.
 
-Open `index.html` in a browser, or host the folder on GitHub Pages / Netlify.
-No build step.
+There are two versions in this repo:
+
+| | Where | For |
+| --- | --- | --- |
+| **Prototype 1** | `index.html` (repo root) | Phones and tablets. A web app you can add to your home screen. |
+| **Prototype 2** | [`desktop/`](desktop/README.md) | Mac and Windows. Real files, three-pane layout, PDF export. |
+
+## Prototype 1: phone
+
+Open `index.html` in a browser, or host the repo on GitHub Pages / Netlify
+(no build step). On a phone, use **Share → Add to Home Screen**: it opens
+full-screen like an app and keeps working offline.
+
+Phone-specific touches: large touch targets, undo/redo buttons (no Ctrl+Z on a
+phone keyboard), a **Done** button to hide the keyboard, and a header that
+collapses while you type.
 
 ## What it does
 
