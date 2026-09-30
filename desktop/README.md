@@ -30,8 +30,11 @@ The builds aren't signed with a paid certificate yet, so the first launch needs 
   and you can type quick notes straight into the box.
 - **Word goal or limit** (click the word count): a target to reach, or a maximum like a 100-word drabble. Text past a limit turns red.
 - **Typing helpers**: quotes and brackets close themselves (select text and type `"` to wrap it), and `Ctrl`/`⌥` + arrows moves a word at a time.
-- **Thesaurus** tab (`⌘/Ctrl ⇧ L`, right-click a word, or the selection toolbar): similar words, opposites, rhymes,
-  describing words and definitions from the free Datamuse API. Click a result to swap it in, click another to try that one instead.
+- **Onoma** tab (`⌘/Ctrl ⇧ L`, right-click, or the selection toolbar): find the word from a description, or synonyms,
+  opposites, rhymes and describing words for the word at the cursor. The button inside its search box switches between
+  an AI model (Claude, ChatGPT, DeepSeek, OpenRouter with your own key), the free online source and the offline pack,
+  which ships with the app. Set keys up in Edit → AI Models for Onoma. Keys are encrypted with the system keychain and
+  used only by the app's main process.
 - **Light styles**: Paper (default), Sage or Ivory in Settings.
 - **Keyboard shortcuts page**: `⌘/Ctrl /`, or Help → Keyboard Shortcuts.
 - **Character notes**: each cast member has a notes field and a colour, and shows how many lines they have.
@@ -61,7 +64,7 @@ The builds aren't signed with a paid certificate yet, so the first launch needs 
 | `Ctrl`/`⌥` + `Backspace` | Delete the previous word |
 | `⌘/Ctrl` + `⇧` + `M` / `J` | Move / copy the selection to side notes |
 | `⌘/Ctrl` + `⇧` + `G` | Word goal or limit |
-| `⌘/Ctrl` + `⇧` + `L` | Thesaurus for the word at the cursor |
+| `⌘/Ctrl` + `⇧` + `L` | Onoma: find the word |
 | `⌘/Ctrl` + `/` | All keyboard shortcuts |
 
 ## Develop

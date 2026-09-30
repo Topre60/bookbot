@@ -10,6 +10,7 @@
   var isElectron = !!window.inklingHost;
   var host = window.inklingHost || (function () {
     var KEY = "inkling.desktop.docs";
+    function devKeys() { try { return JSON.parse(localStorage.getItem("inkling.desktop.devkeys") || "{}"); } catch (e) { return {}; } }
     function all() { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; } }
     function put(m) { try { localStorage.setItem(KEY, JSON.stringify(m)); } catch (e) { /* ignore */ } }
     return {
@@ -38,6 +39,16 @@
         return Promise.resolve(name + "." + ext);
       },
       exportPdf: function () { toast("PDF export needs the desktop app"); return Promise.resolve(null); },
+      aiKeys: function () { return Promise.resolve(Object.keys(devKeys())); },
+      aiSetKey: function (p, k) { var m = devKeys(); if (k) m[p] = k; else delete m[p]; try { localStorage.setItem("inkling.desktop.devkeys", JSON.stringify(m)); } catch (e) { /* ignore */ } return Promise.resolve(Object.keys(m)); },
+      aiCall: function (o) {
+        var req = buildLLMRequest(o.provider, o.model, devKeys()[o.provider], o.system, o.user);
+        return fetch(req.url, { method: "POST", headers: req.headers, body: JSON.stringify(req.body) }).then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) { var e = httpError(r.status, j); throw new Error(e.code + "|" + e.message); } return req.text(j); });
+        }, function () { throw new Error("net|couldn’t connect"); });
+      },
+      aiModels: function (p) { var q = modelsRequest(p, devKeys()[p]); return fetch(q.url, { headers: q.headers }).then(function (r) { return r.json(); }).then(function (j) { return (j.data || []).map(function (m) { return m.id; }); }); },
+      onomaPack: function () { return fetch("../../data/onoma-offline.json").then(function (r) { return r.text(); }); },
       setTheme: function () {}, setMenuState: function () {}, setTitle: function (t) { document.title = t ? t + " — Inkling" : "Inkling"; },
       onMenu: function () {}, onOpenFile: function () {}
     };
@@ -377,6 +388,7 @@
   function wordSyl(w) {
     w = w.toLowerCase().replace(/[’']/g, "").replace(/[^a-z]/g, "");
     if (!w) return 0;
+    if (pack) { var pe = pack.R.get(w); if (pe) return pe.syl; }
     if (SYL_EXCEPT[w] != null) return SYL_EXCEPT[w];
     if (w.length <= 3) return 1;
     var base = w;
@@ -1165,7 +1177,7 @@
      ================================================================ */
   function openModal(id) { closeModals(); $("scrim").hidden = false; $(id).hidden = false; }
   function closeModals() {
-    ["tplModal", "exportModal", "askModal", "settingsModal", "helpModal", "palette", "goalModal", "keysModal"].forEach(function (m) { $(m).hidden = true; });
+    ["tplModal", "exportModal", "askModal", "settingsModal", "helpModal", "palette", "goalModal", "keysModal", "aiModal"].forEach(function (m) { $(m).hidden = true; });
     $("scrim").hidden = true;
   }
   function ask(title, text, buttons) {
@@ -1202,7 +1214,7 @@
       ["Light theme", "theme:light"], ["Dark theme", "theme:dark"], ["Match system theme", "theme:system"],
       ["Add character", "cast-add"], ["Back and forth", "pingpong"], ["Show outline", "tab:outline"], ["Show stats", "tab:stats"],
       ["Move selection to side notes", "notes:move", MOD + "⇧M"], ["Copy selection to side notes", "notes:copy", MOD + "⇧J"],
-      ["Thesaurus for the word at the cursor", "thes", MOD + "⇧L"], ["Show thesaurus", "tab:words"],
+      ["Onoma: find the word", "thes", MOD + "⇧L"], ["AI models for Onoma…", "ai"],
       ["Word goal or limit…", "goal", MOD + "⇧G"], ["Keyboard shortcuts", "keys", MOD + "/"],
       ["Settings", "settings"], ["How Inkling works", "help"]
     ].map(function (c) { return { g: "Command", label: c[0], act: c[1], k: c[2] || "" }; });
@@ -1330,7 +1342,7 @@
           html += "<button data-b=\"speak:" + i + "\" style=\"--who:var(--" + c.color + ")\" title=\"" + esc(c.name) + " says this\"><span class=\"key\">" + esc(c.key) + "</span></button>";
         });
       }
-      html += "<span class=\"bsep\"></span><button data-b=\"thes\" title=\"" + MOD + "⇧L\">Thesaurus</button>";
+      html += "<span class=\"bsep\"></span><button data-b=\"thes\" title=\"Find a better word (" + MOD + "⇧L)\">Onoma</button>";
       html += "<span class=\"bsep\"></span><button data-b=\"notes:move\" title=\"" + MOD + "⇧M\">Move to notes</button><button data-b=\"notes:copy\" title=\"" + MOD + "⇧J\">Copy to notes</button>";
       el.innerHTML = html;
       el.hidden = false;
@@ -1354,7 +1366,7 @@
         [k(W, "Backspace"), "Delete the word before the cursor"], [k(W, "Delete"), "Delete the word after the cursor"]]],
       ["Typing", [[k("\"") + " " + k("(") + " " + k("["), "Types both halves, cursor in between"], ["with text selected", "Wraps the selection instead"],
         [k("Backspace"), "Inside an empty pair, removes both"]]],
-      ["Words", [[k(C, S, "L"), "Thesaurus for the word at the cursor"], ["right-click a word", "Look it up"]]],
+      ["Onoma", [[k(C, S, "L"), "Find the word: synonyms for the word at the cursor, or a word for the selected description"], ["right-click", "Onoma on a word or selection"]]],
       ["Side notes", [[k(C, S, "M"), "Move the selection to side notes"], [k(C, S, "J"), "Copy the selection to side notes"], ["right-click", "Same options on any selection"]]],
       ["Script", [[k(C, "1") + " … " + k("6"), "Scene, Action, Character, Paren, Dialogue, Transition"], [k("Tab") + " " + k(S, "Tab"), "Next / previous element"],
         [k(C, S, "1") + " " + k("2") + " " + k("3"), "Prose, Script, Poem"]]],
@@ -1394,68 +1406,299 @@
   function goalChanged() { markDirty(); renderGoal(); decorateSoon(); renderStatus(); renderPanelSoon(); }
 
   /* ================================================================
-     Thesaurus — Datamuse (https://www.datamuse.com/api/): free, no key.
-     Where outside sites are blocked (the Claude preview) it asks Claude instead.
+     Onoma: find the word. Start from a word or a description.
+     Sources: an AI model (the writer's own key), Datamuse (free, online),
+     or the offline pack (WordNet + CMU Pronouncing Dictionary).
+     If the chosen source can't answer, the next one does.
      ================================================================ */
   var WORDS_API = "https://api.datamuse.com/words";
   var WORD_TABS = [
+    { id: "find", label: "Find the word", q: "ml" },
     { id: "syn", label: "Similar", q: "ml" },
     { id: "ant", label: "Opposite", q: "rel_ant" },
     { id: "rhy", label: "Rhymes", q: "rel_rhy" },
     { id: "adj", label: "Describe it", q: "rel_jjb" },
     { id: "rel", label: "Related", q: "rel_trg" }
   ];
-  var ASK = { syn: "synonyms and close alternatives", ant: "antonyms", rhy: "perfect rhymes", adj: "adjectives writers often use to describe it", rel: "words strongly associated with it" };
-  var POS = { n: "noun", v: "verb", adj: "adjective", adv: "adverb" };
-  var wordCache = {}, words = { q: "", tab: "syn", target: null, seq: 0 };
-  var sampleP = null;
-  function viaClaude(prompt) {
-    if (!window.claude || !window.claude.use) return Promise.reject(new Error("offline"));
-    sampleP = sampleP || window.claude.use("sample");
-    return sampleP.then(function (s) { if (!s) throw new Error("offline"); return s.json(prompt, { modelTier: "quick" }); });
+  var PROVIDERS = {
+    claude: { name: "Claude", company: "Anthropic", model: "claude-haiku-4-5-20251001", keyUrl: "https://console.anthropic.com/settings/keys", hint: "sk-ant-…", models: ["claude-haiku-4-5-20251001", "claude-sonnet-5-5", "claude-opus-5-5"] },
+    openai: { name: "ChatGPT", company: "OpenAI", model: "gpt-4o-mini", keyUrl: "https://platform.openai.com/api-keys", hint: "sk-…", models: ["gpt-4o-mini", "gpt-4o"] },
+    deepseek: { name: "DeepSeek", company: "DeepSeek", model: "deepseek-chat", keyUrl: "https://platform.deepseek.com/api_keys", hint: "sk-…", models: ["deepseek-chat", "deepseek-reasoner"] },
+    openrouter: { name: "OpenRouter", company: "any model, one key", model: "openrouter/auto", keyUrl: "https://openrouter.ai/keys", hint: "sk-or-…", models: ["openrouter/auto"] }
+  };
+  var POS = { n: "noun", v: "verb", a: "adjective", adj: "adjective", s: "adjective", r: "adverb", adv: "adverb" };
+  var wordCache = {}, words = { q: "", tab: "find", target: null, seq: 0, context: "" };
+
+  function aiConf() {
+    var a = state.settings.ai || (state.settings.ai = { provider: "claude", models: {} });
+    a.models = a.models || {};
+    return a;
+  }
+  function aiModel(p) { return aiConf().models[p] || PROVIDERS[p].model; }
+  function onomaSource() { return state.settings.onomaSource || "ai"; }
+  function usingPreviewAI() { return onomaSource() === "ai" && !hasKey(aiConf().provider) && !!previewAI; }
+  function sourceLabel() {
+    var s = onomaSource();
+    if (s === "web") return "Online";
+    if (s === "offline") return "Offline";
+    return usingPreviewAI() ? "Claude (preview)" : PROVIDERS[aiConf().provider].name;
   }
   function fetchJSON(url) {
     return fetch(url).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
   }
-  function lookup(kind, word) {
-    var key = kind + ":" + word.toLowerCase();
-    if (wordCache[key]) return Promise.resolve(wordCache[key]);
-    var tab = WORD_TABS.filter(function (t) { return t.id === kind; })[0];
-    var get = function (param) {
-      return fetchJSON(WORDS_API + "?" + param + "=" + encodeURIComponent(word) + "&md=s&max=80").then(function (l) {
-        return l.map(function (x) { return { w: x.word, syl: x.numSyllables || syllables(x.word) }; });
-      });
-    };
-    return get(tab.q).then(function (l) {
-      if (kind === "rhy" && l.length < 12) return get("rel_nry").then(function (n) { return l.concat(n.map(function (x) { x.near = true; return x; })); });
-      return l;
-    }).then(null, function () {
-      return viaClaude("List up to 40 " + ASK[kind] + " for the English word \"" + word + "\", most useful first. Reply with JSON only: {\"words\":[\"...\"]}")
-        .then(function (r) { return ((r && r.words) || []).map(function (w) { return { w: String(w), syl: syllables(String(w)) }; }); });
-    }).then(function (l) {
-      var seen = {};
-      l = l.filter(function (x) {
-        var k = x.w.toLowerCase();
-        if (seen[k] || k === word.toLowerCase() || !/^\p{L}[\p{L}’' \-]*$/u.test(x.w)) return false;
-        seen[k] = 1; return true;
-      });
-      wordCache[key] = l;
-      return l;
-    });
+  function err(code, msg) { var e = new Error(msg); e.code = code; return e; }
+
+  /* ---------- LLM request shapes (the desktop app builds the same ones in main.js) ---------- */
+  function buildLLMRequest(provider, model, key, system, user) {
+    if (provider === "claude") {
+      return {
+        url: "https://api.anthropic.com/v1/messages",
+        headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        body: { model: model, max_tokens: 1500, system: system, messages: [{ role: "user", content: user }] },
+        text: function (j) { return (j.content || []).filter(function (b) { return b.type === "text"; }).map(function (b) { return b.text; }).join(""); }
+      };
+    }
+    var url = { openai: "https://api.openai.com/v1/chat/completions", deepseek: "https://api.deepseek.com/chat/completions", openrouter: "https://openrouter.ai/api/v1/chat/completions" }[provider];
+    var headers = { "content-type": "application/json", authorization: "Bearer " + key };
+    if (provider === "openrouter") { headers["X-Title"] = "Inkling"; headers["HTTP-Referer"] = "https://github.com/Topre60/bookbot"; }
+    var body = { model: model, messages: [{ role: "system", content: system }, { role: "user", content: user }] };
+    if (provider !== "openrouter") body.response_format = { type: "json_object" };
+    return { url: url, headers: headers, body: body, text: function (j) { return (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || ""; } };
   }
-  function define(word) {
-    var key = "def:" + word.toLowerCase();
-    if (wordCache[key]) return Promise.resolve(wordCache[key]);
-    return fetchJSON(WORDS_API + "?sp=" + encodeURIComponent(word) + "&md=d&max=1").then(function (l) {
-      var hit = l[0] && l[0].word.toLowerCase() === word.toLowerCase() ? l[0].defs || [] : [];
-      return hit.map(function (s) { var t = s.split("\t"); return { pos: t[0], text: t[1] }; });
-    }).then(null, function () {
-      return viaClaude("Define the English word \"" + word + "\" in at most 2 short senses. Reply with JSON only: {\"defs\":[{\"pos\":\"n|v|adj|adv\",\"text\":\"...\"}]}")
-        .then(function (r) { return (r && r.defs) || []; }, function () { return []; });
-    }).then(function (d) { wordCache[key] = d; return d; });
+  function modelsRequest(provider, key) {
+    return {
+      claude: { url: "https://api.anthropic.com/v1/models?limit=100", headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" } },
+      openai: { url: "https://api.openai.com/v1/models", headers: { authorization: "Bearer " + key } },
+      deepseek: { url: "https://api.deepseek.com/models", headers: { authorization: "Bearer " + key } },
+      openrouter: { url: "https://openrouter.ai/api/v1/models", headers: {} }
+    }[provider];
+  }
+  function httpError(status, j) {
+    var msg = (j && j.error && (j.error.message || j.error)) || (j && j.message) || ("HTTP " + status);
+    var code = status === 401 || status === 403 ? "auth" : status === 404 ? "model" : status === 429 ? "rate" : status === 400 && /model/i.test(msg) ? "model" : "other";
+    return err(code, String(msg));
+  }
+  function parseJSON(text) {
+    var t = String(text || "").replace(/```(?:json)?/g, "");
+    var a = t.indexOf("{"), b = t.lastIndexOf("}");
+    if (a < 0 || b < a) throw err("other", "The model didn’t reply in the expected format.");
+    return JSON.parse(t.slice(a, b + 1));
   }
 
-  /* the word to swap: the selection, or the word the cursor is in */
+  /* ---------- source 1: AI ---------- */
+  var AI_SYSTEM = "You are Onoma, the word-finding tool inside a creative writing app. You help writers find the exact word. Reply with one JSON object and nothing else.";
+  function aiPrompt(kind, q) {
+    var d = cur();
+    var form = d.mode === "script" ? "a screenplay" : d.mode === "poem" ? "a poem" : "prose fiction";
+    var ctx = words.context && kind !== "find" ? "\nThe sentence it appears in: \"" + words.context.slice(0, 400) + "\"" : "";
+    var ask = {
+      find: "The writer is looking for a word or short phrase for this idea: \"" + q + "\". Suggest up to 12, best fit first. In each note, say in 10 words or fewer what shade of the idea it carries. Leave def empty.",
+      syn: "Suggest up to 24 synonyms or close alternatives for \"" + q + "\", best fit for the sentence first. Notes: the nuance, 6 words or fewer.",
+      ant: "Suggest up to 16 opposites of \"" + q + "\", best first. Notes: the nuance, 6 words or fewer.",
+      rhy: "List up to 30 words that rhyme with \"" + q + "\", perfect rhymes first, then near rhymes. Put only the syllable count, as a number, in each note.",
+      adj: "Suggest up to 24 adjectives a writer could use to describe \"" + q + "\", including fresh ones, not only the obvious. Notes: 6 words or fewer.",
+      rel: "Suggest up to 24 words strongly associated with \"" + q + "\": images, objects, actions and moods. Notes: 6 words or fewer."
+    }[kind];
+    return ask + ctx + "\nThe writing is " + form + "." +
+      "\nReply with JSON in exactly this shape: {\"def\":\"one-line definition of the word, or empty\",\"pos\":\"noun|verb|adjective|adverb or empty\",\"words\":[{\"w\":\"word\",\"note\":\"...\"}]}";
+  }
+  function aiLookup(kind, q) {
+    var p = aiConf().provider, prompt = aiPrompt(kind, q), run;
+    if (hasKey(p)) run = callLLM(p, aiModel(p), AI_SYSTEM, prompt).then(function (t) { return { data: parseJSON(t), from: PROVIDERS[p].name + " · " + aiModel(p) }; });
+    else if (previewAI) run = previewAI(AI_SYSTEM + "\n\n" + prompt).then(function (d) { return { data: d, from: "Claude (preview)" }; });
+    else run = Promise.reject(err("nokey", "No API key for " + PROVIDERS[p].name + " yet."));
+    return run.then(function (r) {
+      var d = r.data || {};
+      var items = (d.words || []).map(function (x) {
+        if (typeof x === "string") x = { w: x };
+        var w = String(x.w || x.word || "").trim();
+        return { w: w, note: kind === "rhy" ? "" : String(x.note || ""), syl: kind === "rhy" && parseInt(x.note, 10) ? parseInt(x.note, 10) : syllables(w) };
+      }).filter(function (x) { return x.w; });
+      return { items: items, defs: d.def ? [{ pos: d.pos || "", text: d.def }] : [], from: r.from };
+    });
+  }
+
+  /* ---------- source 2: Datamuse ---------- */
+  function webLookup(kind, q) {
+    var tab = WORD_TABS.filter(function (t) { return t.id === kind; })[0];
+    var get = function (param) {
+      return fetchJSON(WORDS_API + "?" + param + "=" + encodeURIComponent(q) + "&md=sd&max=" + (kind === "find" ? 30 : 80)).then(function (l) {
+        return l.map(function (x) {
+          var note = kind === "find" && x.defs && x.defs[0] ? x.defs[0].split("\t")[1] : "";
+          return { w: x.word, syl: x.numSyllables || syllables(x.word), note: note && note.length > 90 ? note.slice(0, 88) + "…" : note };
+        });
+      });
+    };
+    var list = get(tab.q).then(function (l) {
+      if (kind === "rhy" && l.length < 12) return get("rel_nry").then(function (n) { return l.concat(n.map(function (x) { x.near = true; return x; })); });
+      return l;
+    });
+    var defs = kind === "find" ? Promise.resolve([]) : fetchJSON(WORDS_API + "?sp=" + encodeURIComponent(q) + "&md=d&max=1").then(function (l) {
+      var hit = l[0] && l[0].word.toLowerCase() === q.toLowerCase() ? l[0].defs || [] : [];
+      return hit.slice(0, 2).map(function (s) { var t = s.split("\t"); return { pos: t[0], text: t[1] }; });
+    }, function () { return []; });
+    return Promise.all([list, defs]).then(function (r) {
+      if (!r[0].length && !r[1].length) throw err("empty", "Nothing found online.");
+      return { items: r[0], defs: r[1], from: "Datamuse (online)" };
+    }, function (e) { throw e.code ? e : err("net", "Couldn’t reach the online word service."); });
+  }
+
+  /* ---------- source 3: the offline pack ---------- */
+  var pack = null, packP = null;
+  function loadPack() {
+    if (!packP) {
+      packP = loadPackData().then(function (d) {
+        var W = new Map();
+        d.s.forEach(function (s, i) {
+          s[1].split("|").forEach(function (w) { var k = w.toLowerCase(), a = W.get(k); if (!a) W.set(k, a = []); if (a.indexOf(i) < 0) a.push(i); });
+        });
+        W.forEach(function (a) { a.sort(function (x, y) { return d.s[y][5] - d.s[x][5]; }); });
+        var R = new Map();
+        Object.keys(d.r).forEach(function (key) {
+          d.r[key].split(";").forEach(function (part) {
+            var c = part.indexOf(":"), syl = +part.slice(0, c);
+            part.slice(c + 1).split(" ").forEach(function (w) { R.set(w, { key: key, syl: syl }); });
+          });
+        });
+        pack = { s: d.s, W: W, R: R, r: d.r, e: d.e || {}, G: null };
+        decorateSoon();
+        return pack;
+      });
+      packP.catch(function () { packP = null; });
+    }
+    return packP;
+  }
+  function lemmaOf(q) {
+    var w = q.toLowerCase().trim();
+    var c = [w, pack.e[w], w.replace(/ies$/, "y"), w.replace(/es$/, ""), w.replace(/s$/, ""), w.replace(/ed$/, ""), w.replace(/ed$/, "e"), w.replace(/d$/, ""),
+      w.replace(/ing$/, ""), w.replace(/ing$/, "e"), w.replace(/([^aeiou])\1(ing|ed)$/, "$1"), w.replace(/ier$/, "y"), w.replace(/iest$/, "y"), w.replace(/er$/, ""), w.replace(/est$/, ""), w.replace(/ly$/, "")];
+    for (var i = 0; i < c.length; i++) if (c[i] && pack.W.has(c[i])) return c[i];
+    return null;
+  }
+  var STOP = new Set("a an the of to in on at for with by from and or but is are was were be been being it its this that these those as into onto over under about like than then so such very not no you your my our their his her them they he she we me us what which who whom when where why how all any some each every one thing things something someone somebody word words way feeling feel kind sort type when you have has had can could would should will just really".split(" "));
+  function stem(t) { return t.replace(/ies$/, "y").replace(/(ing|ed|es|s)$/, ""); }
+  function reverseLookup(q) {
+    if (!pack.G) {
+      var G = new Map();
+      pack.s.forEach(function (s, i) {
+        var seen = {};
+        (s[2] + " " + s[1].replace(/\|/g, " ")).toLowerCase().split(/[^a-z]+/).forEach(function (t) {
+          if (t.length < 3 || STOP.has(t)) return;
+          t = stem(t);
+          if (seen[t]) return;
+          seen[t] = 1;
+          var a = G.get(t); if (!a) G.set(t, a = []); a.push(i);
+        });
+      });
+      pack.G = G;
+    }
+    var terms = q.toLowerCase().split(/[^a-z]+/).filter(function (t) { return t.length >= 3 && !STOP.has(t); }).map(stem);
+    var N = pack.s.length, score = new Map(), hits = new Map();
+    terms.forEach(function (t) {
+      var post = pack.G.get(t); if (!post) return;
+      var idf = Math.log(N / post.length);
+      post.forEach(function (i) { score.set(i, (score.get(i) || 0) + idf); hits.set(i, (hits.get(i) || 0) + 1); });
+    });
+    var nt = Math.max(1, terms.length);
+    // meanings that match more of the description rank far higher than ones matching a single common word
+    var top = Array.from(score.keys()).map(function (i) { var cov = hits.get(i) / nt; return [i, score.get(i) * cov * cov + Math.log(1 + pack.s[i][5]) * 0.3]; })
+      .sort(function (a, b) { return b[1] - a[1]; }).slice(0, 25);
+    var out = [], seen = {}, qs = new Set(terms);
+    top.forEach(function (e) {
+      var s = pack.s[e[0]];
+      s[1].split("|").slice(0, 3).forEach(function (w) {
+        var k = w.toLowerCase();
+        if (seen[k] || qs.has(stem(k))) return;
+        seen[k] = 1;
+        out.push({ w: w, note: s[2], syl: syllables(w) });
+      });
+    });
+    return out.slice(0, 30);
+  }
+  function wordsOf(ids, skip, groupBy) {
+    var out = [], seen = {};
+    ids.forEach(function (i) {
+      var s = pack.s[i];
+      s[1].split("|").forEach(function (w) {
+        var k = w.toLowerCase();
+        if (k === skip || seen[k]) return;
+        seen[k] = 1;
+        out.push({ w: w, syl: syllables(w), group: groupBy ? groupBy(i) : null });
+      });
+    });
+    return out;
+  }
+  function offlineLookup(kind, q) {
+    return loadPack().then(function () {
+      if (kind === "adj") throw err("unsupported", "“Describe it” needs AI or the online source.");
+      if (kind === "find") return { items: reverseLookup(q), defs: [], from: "Offline word pack" };
+      var w = q.toLowerCase().trim(), items = [];
+      if (kind === "rhy") {
+        var e = pack.R.get(w);
+        if (e) pack.r[e.key].split(";").forEach(function (part) {
+          var c = part.indexOf(":"), syl = +part.slice(0, c);
+          part.slice(c + 1).split(" ").forEach(function (x) { if (x !== w) items.push({ w: x, syl: syl }); });
+        });
+        return { items: items, defs: [], from: "Offline word pack" };
+      }
+      var lemma = lemmaOf(w), ids = lemma ? pack.W.get(lemma).slice(0, 10) : [];
+      var sense = function (i) { var s = pack.s[i]; return (POS[s[0]] || "") + " · " + s[2]; };
+      if (kind === "syn") items = wordsOf(ids, lemma, sense);
+      if (kind === "ant" || kind === "rel") {
+        ids.forEach(function (i) {
+          var list = pack.s[i][kind === "ant" ? 3 : 4];
+          if (!list) return;
+          items = items.concat(wordsOf(list.split(",").map(function (x) { return parseInt(x, 36); }), lemma, function () { return sense(i); }));
+        });
+      }
+      var defs = ids.slice(0, 2).map(function (i) { return { pos: pack.s[i][0], text: pack.s[i][2] }; });
+      if (!items.length && !defs.length) throw err("empty", "“" + q + "” isn’t in the offline word pack.");
+      return { items: items, defs: defs, from: "Offline word pack" };
+    });
+  }
+
+  /* ---------- lookup with fallback ---------- */
+  function explain(src, e) {
+    var p = PROVIDERS[aiConf().provider].name;
+    if (src === "ai") {
+      if (e.code === "nokey") return { text: "No API key for " + p + " yet.", fix: true };
+      if (e.code === "auth") return { text: p + " didn’t accept the API key.", fix: true };
+      if (e.code === "model") return { text: p + " doesn’t know the model “" + aiModel(aiConf().provider) + "”.", fix: true };
+      if (e.code === "rate") return { text: p + " says you’ve hit a usage limit." };
+      return { text: "Couldn’t get an answer from " + p + (e.message ? " (" + e.message + ")" : "") + "." };
+    }
+    return { text: e.message || "That source couldn’t answer." };
+  }
+  function onomaLookup(kind, q) {
+    var src = onomaSource();
+    var order = { ai: ["ai", "web", "offline"], web: ["web", "offline"], offline: ["offline", "web"] }[src];
+    var ctxKey = src === "ai" ? aiConf().provider + "/" + aiModel(aiConf().provider) + "/" + (kind === "find" ? "" : words.context) : "";
+    var key = src + ":" + ctxKey + ":" + kind + ":" + q.toLowerCase();
+    if (wordCache[key]) return Promise.resolve(wordCache[key]);
+    var notes = [];
+    function attempt(i) {
+      var s = order[i], fn = s === "ai" ? aiLookup : s === "web" ? webLookup : offlineLookup;
+      return fn(kind, q).then(function (r) {
+        var seen = {};
+        r.items = r.items.filter(function (x) {
+          var k = x.w.toLowerCase();
+          if (seen[k] || k === q.toLowerCase() || !/^\p{L}[\p{L}’' \-]*$/u.test(x.w)) return false;
+          seen[k] = 1; return true;
+        });
+        r.notes = notes;
+        if (!notes.length) wordCache[key] = r;
+        return r;
+      }, function (e) {
+        notes.push(explain(s, e));
+        if (i + 1 < order.length) return attempt(i + 1);
+        e.notes = notes;
+        throw e;
+      });
+    }
+    return attempt(0);
+  }
+
+  /* ---------- the panel ---------- */
   function wordAtCaret() {
     var c = caretInfo();
     if (!c || c.block !== c.endBlock) return null;
@@ -1467,68 +1710,104 @@
     while (a < b && !/[\p{L}\p{N}]/u.test(txt[a])) a++;
     while (b > a && !/[\p{L}\p{N}]/u.test(txt[b - 1])) b--;
     var w = txt.slice(a, b);
-    if (!w || w.length > 40 || /\s{2,}/.test(w)) return null;
-    return { block: c.block, a: a, b: b, word: w };
+    if (!w || w.length > 200) return null;
+    return { block: c.block, a: a, b: b, word: w, sel: !c.collapsed };
   }
   function matchCase(orig, w) {
     if (orig.length > 1 && orig === orig.toUpperCase() && /\p{L}/u.test(orig)) return w.toUpperCase();
     if (/^\p{Lu}/u.test(orig)) return w.charAt(0).toUpperCase() + w.slice(1);
     return w;
   }
-  function openThesaurus() {
+  function openOnoma() {
     words.target = wordAtCaret();
-    if (cur().mode === "poem" && !words.q) words.tab = "rhy";
-    showThesaurus();
-    if (words.target) wordsGo(words.target.word);
-    else { renderWordTabs(); renderWordHint(); if (!words.q) $("wordsRes").innerHTML = "<p class=\"w-note\">Put the cursor in a word or select one, then open the thesaurus. Or type any word above.</p>"; }
+    words.context = words.target ? words.target.block.textContent : "";
+    showOnoma();
+    renderSourceButton();
+    if (words.target) {
+      var multi = words.target.word.trim().split(/\s+/).length >= 3;
+      var tab = multi ? "find" : cur().mode === "poem" ? "rhy" : (words.tab === "find" ? "syn" : words.tab);
+      wordsGo(words.target.word, tab);
+    } else {
+      words.tab = "find";
+      renderWordTabs(); renderWordHint();
+      $("wordsQ").value = "";
+      $("wordsDef").innerHTML = ""; $("wordsFrom").innerHTML = "";
+      $("wordsRes").innerHTML = "<p class=\"w-note\">Describe what you mean (“the smell of rain on dry ground”) and Onoma finds the word. Or put the cursor in a word first for synonyms, opposites and rhymes.</p>";
+      setTimeout(function () { $("wordsQ").focus(); }, 60);
+    }
   }
   function wordsGo(q, tab) {
     q = (q || "").trim();
     if (!q) return;
-    words.q = q;
     if (tab) words.tab = tab;
+    else if (q.split(/\s+/).length >= 3) words.tab = "find";
+    else if (words.tab === "find" && !/\s/.test(q)) words.tab = "syn";
+    words.q = q;
     $("wordsQ").value = q;
-    renderWordTabs(); renderWordHint();
-    var seq = ++words.seq;
-    $("wordsRes").innerHTML = "<p class=\"w-note\">Looking up “" + esc(q) + "”…</p>";
-    $("wordsDef").innerHTML = "";
-    define(q).then(function (d) {
+    renderWordTabs(); renderWordHint(); renderSourceButton();
+    var seq = ++words.seq, kind = words.tab;
+    $("wordsRes").innerHTML = "<p class=\"w-note\">" + (onomaSource() === "ai" ? "Asking " + esc(sourceLabel()) : onomaSource() === "offline" && !pack ? "Loading the offline word pack" : "Looking up “" + esc(q) + "”") + "…</p>";
+    $("wordsDef").innerHTML = ""; $("wordsFrom").innerHTML = "";
+    onomaLookup(kind, q).then(function (r) {
       if (seq !== words.seq) return;
-      $("wordsDef").innerHTML = d.slice(0, 2).map(function (x) { return "<span class=\"pos\">" + esc(POS[x.pos] || x.pos || "") + "</span> " + esc(x.text || ""); }).join("<br>");
+      $("wordsDef").innerHTML = (r.defs || []).slice(0, 2).map(function (x) {
+        return "<span class=\"pos\">" + esc(POS[x.pos] || x.pos || "") + "</span> " + esc(x.text || "");
+      }).join("<br>");
+      renderFrom(r.from, r.notes);
+      renderWordResults(r.items || []);
+    }, function (e) {
+      if (seq !== words.seq) return;
+      renderFrom("", e.notes || [explain(onomaSource(), e)]);
+      $("wordsRes").innerHTML = "<p class=\"w-note\">No results. Check your connection, or try another source with the button in the search box.</p>";
     });
-    lookup(words.tab, q).then(function (l) {
-      if (seq !== words.seq) return;
-      renderWordResults(l);
-    }, function () {
-      if (seq !== words.seq) return;
-      $("wordsRes").innerHTML = "<p class=\"w-note\">Couldn’t reach the thesaurus. Check that you’re online and try again.</p>";
+  }
+  function renderFrom(from, notes) {
+    var html = from ? "via " + esc(from) : "";
+    (notes || []).forEach(function (n) {
+      html += "<span class=\"w-warn\">" + esc(n.text) + (n.fix ? " <button type=\"button\" data-ai-settings>AI settings</button>" : "") + (from ? " Showing " + esc(from.split(" (")[0]) + " results instead." : "") + "</span>";
     });
+    $("wordsFrom").innerHTML = html;
   }
   function renderWordTabs() {
     $("wordsTabs").innerHTML = WORD_TABS.map(function (t) {
-      return "<button role=\"tab\" data-wt=\"" + t.id + "\" aria-selected=\"" + (t.id === words.tab) + "\">" + t.label + "</button>";
+      return "<button type=\"button\" role=\"tab\" data-wt=\"" + t.id + "\" aria-selected=\"" + (t.id === words.tab) + "\">" + t.label + "</button>";
     }).join("");
   }
   function renderWordHint() {
     var t = words.target;
     $("wordsHint").innerHTML = t && editor.contains(t.block)
-      ? "Tap a word to swap it in for “<b>" + esc(t.word) + "</b>”. Tap › to look that word up instead."
+      ? "Tap a word to put it in place of “<b>" + esc(t.word.length > 40 ? t.word.slice(0, 38) + "…" : t.word) + "</b>”. Tap › to look that word up."
       : "Tap a word to add it at the cursor. Tap › to look it up.";
   }
+  function renderSourceButton() {
+    $("wordsSrc").innerHTML = esc(sourceLabel()) + " <span aria-hidden=\"true\">▾</span>";
+    $("wordsSrc").setAttribute("aria-label", "Source: " + sourceLabel() + ". Change");
+  }
   function chip(x, showSyl) {
-    return "<span class=\"wchip\"><button class=\"w-use\" data-w=\"" + esc(x.w) + "\">" + esc(x.w) + (showSyl ? "<small>" + x.syl + "</small>" : "") +
-      "</button><button class=\"w-go\" data-go=\"" + esc(x.w) + "\" title=\"Look up " + esc(x.w) + "\" aria-label=\"Look up " + esc(x.w) + "\">›</button></span>";
+    return "<span class=\"wchip\"" + (x.note ? " title=\"" + esc(x.note) + "\"" : "") + "><button type=\"button\" class=\"w-use\" data-w=\"" + esc(x.w) + "\">" + esc(x.w) + (showSyl ? "<small>" + x.syl + "</small>" : "") +
+      "</button><button type=\"button\" class=\"w-go\" data-go=\"" + esc(x.w) + "\" aria-label=\"Look up " + esc(x.w) + "\">›</button></span>";
   }
   function renderWordResults(l) {
-    if (!l.length) { $("wordsRes").innerHTML = "<p class=\"w-note\">Nothing found for “" + esc(words.q) + "” here. Try another tab or a simpler form of the word.</p>"; return; }
+    if (!l.length) { $("wordsRes").innerHTML = "<p class=\"w-note\">Nothing found for “" + esc(words.q) + "” here. Try another tab or source.</p>"; return; }
     var poem = cur().mode === "poem", html = "";
-    if (words.tab === "rhy") {
+    if (words.tab === "find" || l.some(function (x) { return x.note; }) && words.tab !== "rhy") {
+      html = "<div class=\"wrows\">" + l.slice(0, 40).map(function (x) {
+        return "<div class=\"wrow\"><button type=\"button\" class=\"w-use\" data-w=\"" + esc(x.w) + "\">" + esc(x.w) + "</button><span class=\"wnote\">" + esc(x.note || "") +
+          "</span><button type=\"button\" class=\"w-go\" data-go=\"" + esc(x.w) + "\" aria-label=\"Look up " + esc(x.w) + "\">›</button></div>";
+      }).join("") + "</div>";
+    } else if (words.tab === "rhy") {
       var groups = {}, near = [];
       l.forEach(function (x) { if (x.near) near.push(x); else (groups[x.syl] = groups[x.syl] || []).push(x); });
       Object.keys(groups).sort(function (a, b) { return a - b; }).forEach(function (n) {
-        html += "<h5>" + n + (n === "1" ? " syllable" : " syllables") + "</h5><div class=\"wgrid\">" + groups[n].slice(0, 30).map(function (x) { return chip(x, false); }).join("") + "</div>";
+        html += "<h5>" + n + (n === "1" ? " syllable" : " syllables") + "</h5><div class=\"wgrid\">" + groups[n].slice(0, 40).map(function (x) { return chip(x, false); }).join("") + "</div>";
       });
       if (near.length) html += "<h5>Near rhymes</h5><div class=\"wgrid\">" + near.slice(0, 30).map(function (x) { return chip(x, true); }).join("") + "</div>";
+    } else if (l.some(function (x) { return x.group; })) {
+      var order = [], by = {};
+      l.forEach(function (x) { if (!by[x.group]) { by[x.group] = []; order.push(x.group); } by[x.group].push(x); });
+      order.slice(0, 8).forEach(function (g) {
+        html += "<h5 class=\"sense\">" + esc(g) + "</h5><div class=\"wgrid\">" + by[g].slice(0, 16).map(function (x) { return chip(x, poem); }).join("") + "</div>";
+      });
     } else {
       html = "<div class=\"wgrid\">" + l.slice(0, 60).map(function (x) { return chip(x, poem); }).join("") + "</div>";
     }
@@ -1550,18 +1829,158 @@
     decorateSoon(); markDirty(); renderWordHint();
     return from;
   }
-  function wireThesaurus(afterUse) {
-    $("wordsForm").addEventListener("submit", function (e) { e.preventDefault(); wordsGo($("wordsQ").value); });
-    $("wordsTabs").addEventListener("click", function (e) { var b = e.target.closest("[data-wt]"); if (b) wordsGo(words.q, b.dataset.wt); });
+
+  /* ---------- source menu (the button inside the search box) ---------- */
+  function renderSourceMenu() {
+    var a = aiConf(), src = onomaSource(), html = "<p class=\"sm-h\">AI model</p>";
+    Object.keys(PROVIDERS).forEach(function (p) {
+      var on = src === "ai" && a.provider === p, k = hasKey(p);
+      html += "<button type=\"button\" role=\"menuitemradio\" aria-checked=\"" + on + "\" data-src=\"ai\" data-p=\"" + p + "\"><b>" + PROVIDERS[p].name + "</b><span>" +
+        (k ? esc(aiModel(p)) : p === "claude" && previewAI ? "preview, no key needed" : "add an API key") + "</span></button>";
+    });
+    html += "<p class=\"sm-h\">No AI</p>";
+    html += "<button type=\"button\" role=\"menuitemradio\" aria-checked=\"" + (src === "web") + "\" data-src=\"web\"><b>Online</b><span>Datamuse, free</span></button>";
+    html += "<button type=\"button\" role=\"menuitemradio\" aria-checked=\"" + (src === "offline") + "\" data-src=\"offline\"><b>Offline</b><span>" + esc(PACK_NOTE()) + "</span></button>";
+    html += "<button type=\"button\" class=\"sm-set\" data-ai-settings>AI settings…</button>";
+    $("wordsSrcMenu").innerHTML = html;
+  }
+  function toggleSourceMenu(show) {
+    var m = $("wordsSrcMenu");
+    if (show === undefined) show = m.hidden;
+    if (show) renderSourceMenu();
+    m.hidden = !show;
+  }
+  function pickSource(src, p) {
+    toggleSourceMenu(false);
+    if (src === "ai") {
+      aiConf().provider = p;
+      if (!hasKey(p) && !(p === "claude" && previewAI)) { state.settings.onomaSource = "ai"; persistSettings(); renderSourceButton(); openAISettings(p); return; }
+    }
+    state.settings.onomaSource = src;
+    persistSettings();
+    renderSourceButton();
+    if (words.q) wordsGo(words.q, words.tab);
+  }
+
+  /* ---------- AI settings ---------- */
+  var aiOpen = null;
+  function renderAISettings(focusProvider) {
+    var a = aiConf();
+    aiOpen = focusProvider || aiOpen || a.provider;
+    var html = "<p class=\"lede\">Onoma asks the AI model you choose. Use your own API key: " + esc(KEY_NOTE) + " Only the word or description you look up, and the sentence around it, is sent.</p>";
+    html += "<div class=\"ai-list\">" + Object.keys(PROVIDERS).map(function (p) {
+      var P = PROVIDERS[p], k = hasKey(p), open = aiOpen === p;
+      return "<div class=\"ai-card" + (open ? " open" : "") + (a.provider === p ? " chosen" : "") + "\" data-p=\"" + p + "\">" +
+        "<button type=\"button\" class=\"ai-head\" data-open=\"" + p + "\"><span class=\"ai-dot\"></span><b>" + P.name + "</b><span class=\"ai-co\">" + esc(P.company) + "</span>" +
+        "<span class=\"ai-state " + (k ? "ok" : "") + "\">" + (a.provider === p ? "In use · " : "") + (k ? "Key saved" : "No key") + "</span></button>" +
+        (open ? "<div class=\"ai-body\">" +
+          "<label class=\"ai-l\" for=\"aiKey-" + p + "\">API key</label><div class=\"ai-row\"><input type=\"password\" id=\"aiKey-" + p + "\" data-key=\"" + p + "\" placeholder=\"" + (k ? "•••••••• saved. Paste a new key to replace it" : P.hint) + "\" autocomplete=\"off\" spellcheck=\"false\">" +
+          "<button type=\"button\" class=\"btn sm\" data-savekey=\"" + p + "\">Save</button></div>" +
+          "<p class=\"ai-sub\"><a href=\"" + P.keyUrl + "\" target=\"_blank\" rel=\"noopener\">Get a " + P.name + " key</a>" + (k ? " · <button type=\"button\" class=\"linkish\" data-forget=\"" + p + "\">Remove key</button>" : "") + "</p>" +
+          "<label class=\"ai-l\" for=\"aiModel-" + p + "\">Model</label><div class=\"ai-row\"><input type=\"text\" id=\"aiModel-" + p + "\" data-model=\"" + p + "\" list=\"aiList-" + p + "\" value=\"" + esc(aiModel(p)) + "\" spellcheck=\"false\">" +
+          "<button type=\"button\" class=\"btn sm\" data-listmodels=\"" + p + "\">Load list</button></div><datalist id=\"aiList-" + p + "\">" + P.models.map(function (m) { return "<option value=\"" + esc(m) + "\">"; }).join("") + "</datalist>" +
+          "<div class=\"ai-row end\"><span class=\"ai-msg\" id=\"aiMsg-" + p + "\"></span><button type=\"button\" class=\"btn sm\" data-test=\"" + p + "\">Test</button>" +
+          "<button type=\"button\" class=\"btn sm primary\" data-use=\"" + p + "\">" + (a.provider === p && onomaSource() === "ai" ? "In use" : "Use " + P.name) + "</button></div>" +
+          "</div>" : "") + "</div>";
+    }).join("") + "</div>";
+    html += "<h3>Onoma starts with</h3><div class=\"ai-src\">" + [["ai", "AI model"], ["web", "Online (Datamuse)"], ["offline", "Offline pack"]].map(function (s) {
+      return "<label><input type=\"radio\" name=\"onomaSrc\" value=\"" + s[0] + "\"" + (onomaSource() === s[0] ? " checked" : "") + "> " + s[1] + "</label>";
+    }).join("") + "</div><p class=\"ai-sub\">If it can’t answer (no key, no connection), Onoma tries the next source automatically.</p>";
+    html += "<h3>Offline word pack</h3><p class=\"ai-sub\" id=\"packState\">" + esc(PACK_NOTE()) + "</p>";
+    html += "<p class=\"ai-sub\">Built from WordNet 3.1 (Princeton University) and the CMU Pronouncing Dictionary (Carnegie Mellon University).</p>";
+    if (!pack) html += "<button type=\"button\" class=\"btn sm\" data-loadpack>" + (PACK_BUNDLED ? "Load now" : "Download now") + "</button>";
+    $("aiBody").innerHTML = html;
+  }
+  function aiMsg(p, text, ok) { var el = $("aiMsg-" + p); if (el) { el.textContent = text; el.className = "ai-msg " + (ok ? "ok" : "bad"); } }
+  function wireAISettings() {
+    $("aiBody").addEventListener("click", function (e) {
+      var t = e.target.closest("button"); if (!t) return;
+      var a = aiConf();
+      if (t.dataset.open) { aiOpen = aiOpen === t.dataset.open ? null : t.dataset.open; renderAISettings(aiOpen || "none"); return; }
+      if (t.dataset.savekey) {
+        var p = t.dataset.savekey, v = $("aiKey-" + p).value.trim();
+        if (!v) { aiMsg(p, "Paste a key first.", false); return; }
+        saveKey(p, v).then(function () { a.provider = p; state.settings.onomaSource = "ai"; persistSettings(); renderAISettings(p); renderSourceButton(); aiMsg(p, "Key saved. Testing…", true); testAI(p); });
+      }
+      if (t.dataset.forget) saveKey(t.dataset.forget, "").then(function () { renderAISettings(t.dataset.forget); renderSourceButton(); });
+      if (t.dataset.test) testAI(t.dataset.test);
+      if (t.dataset.use) { a.provider = t.dataset.use; state.settings.onomaSource = "ai"; persistSettings(); renderAISettings(t.dataset.use); renderSourceButton(); }
+      if (t.dataset.listmodels) {
+        var q = t.dataset.listmodels;
+        aiMsg(q, "Loading models…", true);
+        listModels(q).then(function (ids) {
+          $("aiList-" + q).innerHTML = ids.map(function (m) { return "<option value=\"" + esc(m) + "\">"; }).join("");
+          aiMsg(q, ids.length + " models. Pick one in the Model box.", true);
+        }, function (e2) { aiMsg(q, explain("ai", e2).text, false); });
+      }
+      if (t.hasAttribute("data-loadpack")) { $("packState").textContent = "Loading…"; loadPack().then(function () { renderAISettings(); }, function () { $("packState").textContent = "Couldn’t load the word pack. Check your connection and try again."; }); }
+    });
+    $("aiBody").addEventListener("change", function (e) {
+      var t = e.target;
+      if (t.dataset.model) { aiConf().models[t.dataset.model] = t.value.trim() || PROVIDERS[t.dataset.model].model; persistSettings(); renderSourceButton(); }
+      if (t.name === "onomaSrc") { state.settings.onomaSource = t.value; persistSettings(); renderSourceButton(); }
+    });
+    $("aiBody").addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target.dataset.key) { e.preventDefault(); var b = $("aiBody").querySelector("[data-savekey=\"" + e.target.dataset.key + "\"]"); if (b) b.click(); }
+    });
+  }
+  function testAI(p) {
+    if (!hasKey(p)) { aiMsg(p, "Save a key first.", false); return; }
+    aiMsg(p, "Testing…", true);
+    callLLM(p, aiModel(p), "Reply with JSON only.", "Reply with {\"ok\":true}").then(function (t) {
+      parseJSON(t);
+      aiMsg(p, "Works with " + aiModel(p) + ".", true);
+    }, function (e) { aiMsg(p, explain("ai", e).text, false); });
+  }
+
+  function wireOnoma(afterUse) {
+    $("wordsForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      toggleSourceMenu(false);
+      var q = $("wordsQ").value.trim(), t = words.target;
+      // a typed description goes in at the cursor; only a selected phrase gets replaced
+      if (t && !t.sel && q.toLowerCase() !== t.word.toLowerCase() && q.split(/\s+/).length >= 3) words.target = null;
+      wordsGo(q);
+    });
+    $("wordsTabs").addEventListener("click", function (e) { var b = e.target.closest("[data-wt]"); if (!b) return; words.tab = b.dataset.wt; if (words.q) wordsGo(words.q, b.dataset.wt); else renderWordTabs(); });
     $("wordsRes").addEventListener("mousedown", function (e) { if (e.target.closest(".w-use")) e.preventDefault(); });
     $("wordsRes").addEventListener("click", function (e) {
       var u = e.target.closest("[data-w]"), g = e.target.closest("[data-go]");
-      if (g) { wordsGo(g.dataset.go); return; }
+      if (g) { wordsGo(g.dataset.go, words.tab === "find" ? "syn" : words.tab); return; }
       if (u) { var from = useWord(u.dataset.w); if (afterUse) afterUse(from, u.dataset.w); }
     });
+    $("wordsSrc").addEventListener("click", function () { toggleSourceMenu(); });
+    $("wordsSrcMenu").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      if (b.hasAttribute("data-ai-settings")) { toggleSourceMenu(false); openAISettings(); return; }
+      pickSource(b.dataset.src, b.dataset.p);
+    });
+    $("wordsFrom").addEventListener("click", function (e) { if (e.target.closest("[data-ai-settings]")) openAISettings(); });
+    document.addEventListener("mousedown", function (e) {
+      if (!$("wordsSrcMenu").hidden && !e.target.closest("#wordsSrcMenu,#wordsSrc")) toggleSourceMenu(false);
+    });
+    wireAISettings();
   }
 
-  function showThesaurus() { showPanel("words"); }
+  /* ---------- Onoma on the desktop: keys encrypted by the main process, which also makes the calls ---------- */
+  var KEY_NOTE = "it’s encrypted with your computer’s keychain and sent only to that company.";
+  var PACK_BUNDLED = true;
+  function PACK_NOTE() { return pack ? "Loaded. Works with no connection." : "Included with the app. It loads the first time you use it."; }
+  var aiKeys = {};
+  function setKeyList(list) { aiKeys = {}; (list || []).forEach(function (p) { aiKeys[p] = true; }); }
+  function hasKey(p) { return !!aiKeys[p]; }
+  function ipcError(e) {
+    var m = String((e && e.message) || e).match(/(auth|model|rate|net|other|nokey)\|([\s\S]*)$/);
+    throw err(m ? m[1] : "other", m ? m[2] : String((e && e.message) || e));
+  }
+  function saveKey(p, k) { return host.aiSetKey(p, k).then(setKeyList); }
+  function callLLM(p, model, system, user) { return host.aiCall({ provider: p, model: model, system: system, user: user }).catch(ipcError); }
+  function listModels(p) { return host.aiModels(p).catch(ipcError); }
+  var previewAI = null;
+  function loadPackData() { return host.onomaPack().then(function (t) { return typeof t === "string" ? JSON.parse(t) : t; }); }
+  function persistSettings() { saveSettings(); }
+  function showOnoma() { showPanel("words"); }
+  function openAISettings(p) { toggleSourceMenu(false); renderAISettings(p); openModal("aiModal"); }
 
   /* ================================================================
      Chrome: theme, panels, focus
@@ -1686,7 +2105,8 @@
       case "settings": openSettings(); break;
       case "help": openModal("helpModal"); break;
       case "keys": openKeys(); break;
-      case "thes": openThesaurus(); break;
+      case "thes": openOnoma(); break;
+      case "ai": openAISettings(); break;
       case "goal": openGoal(); break;
       case "notes": toNotes(arg === "move"); break;
       case "palette": openPalette(); break;
@@ -1833,7 +2253,7 @@
     if (e.altKey && /^Digit[1-9]$/.test(e.code)) { e.preventDefault(); action("speak:" + (+e.code.slice(5) - 1)); return; }
     if (mod && /^[1-6]$/.test(e.key)) { e.preventDefault(); setType(CYCLE[+e.key - 1]); }
     if (mod && e.shiftKey && e.key.toLowerCase() === "m") { e.preventDefault(); toNotes(true); }
-    if (mod && e.shiftKey && e.key.toLowerCase() === "l") { e.preventDefault(); openThesaurus(); }
+    if (mod && e.shiftKey && e.key.toLowerCase() === "l") { e.preventDefault(); openOnoma(); }
     if (mod && e.shiftKey && e.key.toLowerCase() === "j") { e.preventDefault(); toNotes(false); }
   });
   editor.addEventListener("paste", function (e) {
@@ -1905,13 +2325,14 @@
   $("setTheme").addEventListener("change", function () { action("theme:" + this.value); });
   $("setSmart").addEventListener("change", function () { state.settings.smart = this.checked; saveSettings(); });
   $("setLight").addEventListener("change", function () { state.settings.light = this.value; applyTheme(); saveSettings(); });
-  wireThesaurus(null);
+  wireOnoma(null);
   $("setPair").addEventListener("change", function () { state.settings.autopair = this.checked; saveSettings(); });
   $("setTag").addEventListener("change", function () { state.settings.tag = this.value; saveSettings(); });
   $("setTense").addEventListener("change", function () { state.settings.tense = this.value; saveSettings(); renderCastStrip(); });
   $("setAuthor").addEventListener("input", function () { state.settings.author = this.value; saveSettings(); });
   $("setSize").addEventListener("change", function () { state.settings.scale = +this.value; applyChrome(); saveSettings(); });
   $("revealBtn").addEventListener("click", function () { host.reveal(); });
+  $("aiOpenBtn").addEventListener("click", function () { openAISettings(); });
   $("chooseFolderBtn").addEventListener("click", chooseFolder);
   $("palInput").addEventListener("input", filterPalette);
   $("palInput").addEventListener("keydown", function (e) {
@@ -1998,6 +2419,10 @@
   window.addEventListener("beforeunload", function () { collect(); flush(); });
 
   /* ---------------- boot ---------------- */
+  if (host.aiKeys) host.aiKeys().then(setKeyList);
+  if (host.aiSecure) host.aiSecure().then(function (ok) { if (!ok) KEY_NOTE = "it’s saved in the app’s settings folder on this computer (this system has no keychain to encrypt it) and sent only to that company."; });
+  // load the offline pack in the background so syllable counts and offline lookups are ready
+  setTimeout(function () { loadPack().catch(function () {}); }, 4000);
   try { document.execCommand("defaultParagraphSeparator", false, "p"); } catch (e) { /* ignore */ }
   loadSettings();
   if (host.platform === "darwin") win.classList.add("mac");

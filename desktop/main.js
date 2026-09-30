@@ -1,6 +1,6 @@
 // Inkling desktop — main process.
 // Owns the window, the native menu, and the library folder on disk (one .inkling JSON file per piece).
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell, nativeTheme } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell, nativeTheme, safeStorage } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
@@ -51,6 +51,91 @@ function saveDoc(doc) {
   fs.renameSync(tmp, p);
   return true;
 }
+
+/* ---------------- Onoma: AI keys, model calls, offline pack ---------------- */
+// Keys are encrypted with the OS keychain (safeStorage) and never sent to the page.
+const KEYS_FILE = () => path.join(app.getPath("userData"), "ai-keys.json");
+function readKeys() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(KEYS_FILE(), "utf8"));
+    const out = {};
+    for (const [p, v] of Object.entries(raw)) {
+      try { out[p] = v.enc ? safeStorage.decryptString(Buffer.from(v.enc, "base64")) : v.plain; } catch { /* unreadable on this machine */ }
+    }
+    return out;
+  } catch { return {}; }
+}
+function writeKeys(keys) {
+  const raw = {};
+  const enc = safeStorage.isEncryptionAvailable();
+  for (const [p, v] of Object.entries(keys)) if (v) raw[p] = enc ? { enc: safeStorage.encryptString(v).toString("base64") } : { plain: v };
+  fs.mkdirSync(path.dirname(KEYS_FILE()), { recursive: true });
+  fs.writeFileSync(KEYS_FILE(), JSON.stringify(raw), { mode: 0o600 });
+}
+function llmRequest(provider, model, key, system, user) {
+  if (provider === "claude") {
+    return {
+      url: "https://api.anthropic.com/v1/messages",
+      headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
+      body: { model, max_tokens: 1500, system, messages: [{ role: "user", content: user }] },
+      text: (j) => (j.content || []).filter((b) => b.type === "text").map((b) => b.text).join(""),
+    };
+  }
+  const url = { openai: "https://api.openai.com/v1/chat/completions", deepseek: "https://api.deepseek.com/chat/completions", openrouter: "https://openrouter.ai/api/v1/chat/completions" }[provider];
+  if (!url) throw new Error("other|Unknown provider " + provider);
+  const headers = { "content-type": "application/json", authorization: "Bearer " + key };
+  if (provider === "openrouter") { headers["X-Title"] = "Inkling"; headers["HTTP-Referer"] = "https://github.com/Topre60/bookbot"; }
+  const body = { model, messages: [{ role: "system", content: system }, { role: "user", content: user }] };
+  if (provider !== "openrouter") body.response_format = { type: "json_object" };
+  return { url, headers, body, text: (j) => (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "" };
+}
+function httpCode(status, msg) {
+  if (status === 401 || status === 403) return "auth";
+  if (status === 404 || (status === 400 && /model/i.test(msg))) return "model";
+  if (status === 429) return "rate";
+  return "other";
+}
+async function getJSON(url, init) {
+  let r;
+  try { r = await fetch(url, { ...init, signal: AbortSignal.timeout(45000) }); } catch (e) { throw new Error("net|couldn’t connect (" + (e.name === "TimeoutError" ? "timed out" : e.message) + ")"); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const msg = String((j.error && (j.error.message || j.error)) || j.message || "HTTP " + r.status);
+    throw new Error(httpCode(r.status, msg) + "|" + msg);
+  }
+  return j;
+}
+ipcMain.handle("ai:keys", () => Object.keys(readKeys()));
+ipcMain.handle("ai:secure", () => safeStorage.isEncryptionAvailable());
+ipcMain.handle("ai:set-key", (_e, provider, key) => {
+  const keys = readKeys();
+  if (key) keys[provider] = String(key).trim(); else delete keys[provider];
+  writeKeys(keys);
+  return Object.keys(keys);
+});
+ipcMain.handle("ai:call", async (_e, { provider, model, system, user }) => {
+  const key = readKeys()[provider];
+  if (!key) throw new Error("nokey|No API key saved.");
+  const req = llmRequest(provider, model, key, system, user);
+  const j = await getJSON(req.url, { method: "POST", headers: req.headers, body: JSON.stringify(req.body) });
+  return req.text(j);
+});
+ipcMain.handle("ai:models", async (_e, provider) => {
+  const key = readKeys()[provider] || "";
+  const q = {
+    claude: { url: "https://api.anthropic.com/v1/models?limit=100", headers: { "x-api-key": key, "anthropic-version": "2023-06-01" } },
+    openai: { url: "https://api.openai.com/v1/models", headers: { authorization: "Bearer " + key } },
+    deepseek: { url: "https://api.deepseek.com/models", headers: { authorization: "Bearer " + key } },
+    openrouter: { url: "https://openrouter.ai/api/v1/models", headers: {} },
+  }[provider];
+  const j = await getJSON(q.url, { headers: q.headers });
+  return (j.data || []).map((m) => m.id).sort();
+});
+// the offline word pack lives in the repo's data/ folder in development and in resources/data when packaged
+ipcMain.handle("onoma:pack", () => {
+  const file = app.isPackaged ? path.join(process.resourcesPath, "data", "onoma-offline.json") : path.join(__dirname, "..", "data", "onoma-offline.json");
+  return fs.readFileSync(file, "utf8");
+});
 
 /* ---------------- files opened from Finder / Explorer ---------------- */
 function readForImport(file) {
@@ -105,7 +190,7 @@ function createWindow() {
   // right-click: spelling fixes, clipboard, and the writing actions for a selection
   win.webContents.on("context-menu", (_e, p) => {
     const items = [];
-    if (!p.selectionText && p.isEditable && !p.misspelledWord) items.push({ label: "Thesaurus for This Word", click: send("thes") }, { type: "separator" });
+    if (!p.selectionText && p.isEditable && !p.misspelledWord) items.push({ label: "Onoma: Find a Better Word", click: send("thes") }, { type: "separator" });
     if (p.misspelledWord) {
       p.dictionarySuggestions.slice(0, 5).forEach((w) => items.push({ label: w, click: () => win.webContents.replaceMisspelling(w) }));
       if (!p.dictionarySuggestions.length) items.push({ label: "No suggestions", enabled: false });
@@ -115,7 +200,7 @@ function createWindow() {
     const hasSel = !!(p.selectionText && p.selectionText.trim());
     if (hasSel && p.isEditable) {
       const word = p.selectionText.trim();
-      if (word.length < 40 && !/\s{2,}/.test(word)) items.push({ label: "Thesaurus: “" + (word.length > 20 ? word.slice(0, 20) + "…" : word) + "”", click: send("thes") });
+      if (word.length <= 200) items.push({ label: "Onoma: “" + (word.length > 20 ? word.slice(0, 20) + "…" : word) + "”", click: send("thes") });
       items.push({ label: "Quote Selection “ ”", click: send("quote") });
       items.push({ label: "Move to Side Notes", accelerator: "CmdOrCtrl+Shift+M", click: send("notes:move") });
       items.push({ label: "Copy to Side Notes", accelerator: "CmdOrCtrl+Shift+J", click: send("notes:copy") });
@@ -201,7 +286,8 @@ function buildMenu() {
         { label: "Move Selection to Side Notes", accelerator: "CmdOrCtrl+Shift+M", click: send("notes:move") },
         { label: "Copy Selection to Side Notes", accelerator: "CmdOrCtrl+Shift+J", click: send("notes:copy") },
         { type: "separator" },
-        { label: "Thesaurus…", accelerator: "CmdOrCtrl+Shift+L", click: send("thes") },
+        { label: "Onoma: Find the Word…", accelerator: "CmdOrCtrl+Shift+L", click: send("thes") },
+        { label: "AI Models for Onoma…", click: send("ai") },
         { label: "Word Goal or Limit…", accelerator: "CmdOrCtrl+Shift+G", click: send("goal") },
         { label: "Command Palette…", accelerator: "CmdOrCtrl+K", click: send("palette") },
       ],

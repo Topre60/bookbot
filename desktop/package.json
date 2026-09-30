@@ -88,6 +88,16 @@
       "allowToChangeInstallationDirectory": true,
       "shortcutName": "Inkling",
       "artifactName": "Inkling-${version}-windows-${arch}-setup.${ext}"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "../data",
+        "to": "data",
+        "filter": [
+          "onoma-offline.json",
+          "LICENSES.md"
+        ]
+      }
+    ]
   }
 }

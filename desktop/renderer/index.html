@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.datamuse.com; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' file: data:; img-src 'self' data:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.datamuse.com https://api.anthropic.com https://api.openai.com https://api.deepseek.com https://openrouter.ai; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' file: data:; img-src 'self' data:">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Inkling</title>
 <link rel="stylesheet" href="../node_modules/@fontsource/figtree/400.css">
@@ -129,17 +129,22 @@
         <button role="tab" data-tab="cast" aria-selected="true">Cast</button>
         <button role="tab" data-tab="outline" aria-selected="false">Outline</button>
         <button role="tab" data-tab="stats" aria-selected="false">Stats</button>
-        <button role="tab" data-tab="words" aria-selected="false">Thesaurus</button>
+        <button role="tab" data-tab="words" aria-selected="false">Onoma</button>
       </div>
       <div class="tab-body" id="tabCast"></div>
       <div class="tab-body" id="tabOutline" hidden></div>
       <div class="tab-body" id="tabStats" hidden></div>
       <div class="tab-body" id="tabWords" hidden>
         <form class="w-search" id="wordsForm" autocomplete="off">
-          <input type="search" id="wordsQ" placeholder="Look up a word" spellcheck="false" aria-label="Word">
-          <button class="btn primary sm" type="submit">Look up</button>
+          <div class="w-field">
+            <input type="search" id="wordsQ" placeholder="A word, or describe it" spellcheck="false" aria-label="Word or description">
+            <button type="button" class="w-src" id="wordsSrc" aria-haspopup="menu" title="Where Onoma looks">AI ▾</button>
+          </div>
+          <button class="btn primary sm" type="submit">Find</button>
+          <div class="w-menu" id="wordsSrcMenu" role="menu" hidden></div>
         </form>
         <p class="word-def" id="wordsDef"></p>
+        <div class="w-from" id="wordsFrom"></div>
         <div class="wtabs" id="wordsTabs" role="tablist"></div>
         <p class="w-hint" id="wordsHint"></p>
         <div class="wres" id="wordsRes"></div>
@@ -202,6 +207,7 @@
   <div class="opt"><label for="setAuthor">Your name on title pages</label><input type="text" id="setAuthor" placeholder="Written by…"></div>
   <div class="opt"><label for="setSize">Text size</label>
     <select id="setSize"><option value="0.92">Small</option><option value="1">Medium</option><option value="1.12">Large</option><option value="1.25">Extra large</option></select></div>
+  <div class="opt"><span>AI models for Onoma</span><button class="btn sm" id="aiOpenBtn">Set up…</button></div>
   <div class="opt col"><span>Library folder</span>
     <code id="setFolder"></code>
     <div class="btn-row"><button class="btn sm" id="revealBtn">Show in folder</button><button class="btn sm" id="chooseFolderBtn">Change…</button></div>
@@ -249,6 +255,11 @@
   <div class="presets" id="goalPresets"></div>
   <p class="goal-preview" id="goalPreview"></p>
   <div class="btn-row end"><button class="btn" id="goalClear">No goal</button><button class="btn primary" data-close>Done</button></div>
+</section>
+
+<section class="modal" id="aiModal" hidden aria-label="AI models">
+  <div class="modal-head"><h2>AI models</h2><button class="icon-btn sm" data-close aria-label="Close">✕</button></div>
+  <div id="aiBody"></div>
 </section>
 
 <section class="modal wide" id="keysModal" hidden aria-label="Keyboard shortcuts">

@@ -25,11 +25,27 @@ Both versions: quotes and brackets close themselves as you type (select text and
 type `"` to wrap it), a word goal can be a target or a limit (tap the word count),
 and poem lines show a syllable count.
 
-**Thesaurus** (both): put the cursor in a word and open the thesaurus for similar
-words, opposites, rhymes (grouped by syllables), describing words and related
-words, with a short definition. Tap a result to swap it in. It uses the free
-[Datamuse API](https://www.datamuse.com/api/) (no key, no sign-up). Inside the
-Claude preview, which can't reach outside sites, it asks Claude instead.
+**Onoma: find the word** (both). Named after *onomasiology*, going from an idea to
+the word for it. Describe what you mean (“the smell of rain on dry ground”) or put
+the cursor in a word for similar words, opposites, rhymes (grouped by syllables),
+describing words and related words. Tap a result to put it in. The small button
+inside the search box picks where Onoma looks:
+
+- **AI model** (default): Claude, ChatGPT, DeepSeek or OpenRouter, using your own
+  API key (Settings → AI models). The AI also sees the sentence the word is in, so
+  suggestions fit the context. Keys stay on your device; on desktop they're
+  encrypted with the system keychain and the calls are made by the app itself,
+  not the page. Inside the Claude preview, which blocks outside sites, Claude
+  answers without a key.
+- **Online**: the free [Datamuse API](https://www.datamuse.com/api/), no key.
+- **Offline**: a bundled word pack (`data/onoma-offline.json`, 3.7 MB compressed)
+  built from WordNet 3.1 and the CMU Pronouncing Dictionary. See
+  [data/LICENSES.md](data/LICENSES.md). On a phone it downloads the first time you
+  pick it. Once loaded, it also makes poem syllable counts exact.
+
+If the chosen source can't answer (no key, no connection), Onoma tries the next one
+and says so. To rebuild the pack: `npm install --no-save wordnet-db@3.1.14
+cmu-pronouncing-dictionary@3.0.0 && node tools/build-onoma-pack.js`.
 
 **Light styles** (Settings → Light style): Paper (white, the new default),
 Sage (the original green-grey) and Ivory (warm).
