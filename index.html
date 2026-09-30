@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Inkling</title>
+<meta name="theme-color" content="#e6eae2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111410" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Inkling">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Figtree:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap">
@@ -52,6 +61,7 @@ body {
   background: var(--bg); color: var(--ink);
   font-family: var(--f-ui); font-size: 15px; line-height: 1.45;
   -webkit-font-smoothing: antialiased; overflow: hidden;
+  overscroll-behavior: none; -webkit-tap-highlight-color: transparent;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -182,17 +192,17 @@ svg { display: block; }
 .row-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); flex: none; margin-right: 2px; }
 .chip {
   flex: none; display: inline-flex; align-items: center; gap: 7px;
-  height: 36px; padding: 0 12px 0 5px; border-radius: 999px;
+  height: 42px; padding: 0 14px 0 6px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--paper); font-weight: 600; font-size: 13.5px;
 }
 .chip .key {
-  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--who); color: var(--paper); font-size: 13px; font-weight: 700;
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--who); color: var(--paper); font-size: 14px; font-weight: 700;
 }
 .chip.live { border-color: var(--who); box-shadow: 0 0 0 2px var(--who) inset; }
 .chip.ghost { padding: 0 12px; color: var(--muted); border-style: dashed; background: transparent; }
 .tool {
-  flex: none; height: 36px; min-width: 40px; padding: 0 11px;
+  flex: none; height: 42px; min-width: 44px; padding: 0 12px;
   border-radius: 9px; border: 1px solid var(--line); background: var(--paper);
   font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
 }
@@ -202,8 +212,8 @@ svg { display: block; }
 .tool.accent { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .sep { width: 1px; height: 22px; background: var(--line); flex: none; margin: 0 2px; }
 .mini-select {
-  flex: none; height: 36px; border-radius: 9px; border: 1px solid var(--line); background: var(--paper);
-  padding: 0 8px; font-size: 13px; font-weight: 600;
+  flex: none; height: 42px; border-radius: 9px; border: 1px solid var(--line); background: var(--paper);
+  padding: 0 8px; font-size: 16px; font-weight: 600;
 }
 .tip {
   margin: 0 16px; padding: 9px 12px; border-radius: 9px; background: var(--hl);
@@ -211,6 +221,22 @@ svg { display: block; }
 }
 .tip p { margin: 0; flex: 1; }
 .tip button { border: 0; background: transparent; color: var(--accent); font-weight: 700; padding: 0; }
+
+/* keyboard open on a phone: give the page every pixel */
+.kb .subbar, .kb #helpBtn, .kb #themeBtn, .kb .tip { display: none !important; }
+.kb .top { padding-top: calc(env(safe-area-inset-top, 0px) + 4px); padding-bottom: 4px; }
+.kb .title-input { font-size: 1.05rem; }
+.only-kb { display: none !important; }
+.kb .only-kb { display: inline-flex !important; }
+.tool.icon { padding: 0; width: 44px; justify-content: center; }
+.tool:disabled { opacity: .4; }
+
+/* who's talking: a coloured tick in the margin of tagged prose lines */
+.m-prose p.said::after {
+  content: ""; position: absolute; left: -11px; top: .45em; bottom: .45em; width: 3px; border-radius: 3px;
+  background: var(--who); opacity: .8;
+}
+@media (min-width: 760px) { .m-prose p.said::after { left: -22px; } }
 
 /* ---------- sheets & drawer ---------- */
 .scrim { position: fixed; inset: 0; background: rgba(10, 14, 10, .42); z-index: 20; }
@@ -270,7 +296,7 @@ svg { display: block; }
 .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
 .field label, .field .lbl { font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .field input[type=text], .field input[type=number], .field select {
-  height: 40px; border: 1px solid var(--line); border-radius: 9px; background: var(--well); padding: 0 12px;
+  height: 44px; border: 1px solid var(--line); border-radius: 9px; background: var(--well); padding: 0 12px; font-size: 16px;
 }
 .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
 .swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; background: var(--sw); padding: 0; }
@@ -283,7 +309,7 @@ svg { display: block; }
 .two { display: grid; grid-template-columns: 1fr 90px; gap: 10px; }
 .opt { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .opt:last-child { border-bottom: 0; }
-.opt select { height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--well); padding: 0 8px; max-width: 58%; }
+.opt select { font-size: 16px; height: 38px; border-radius: 8px; border: 1px solid var(--line); background: var(--well); padding: 0 8px; max-width: 58%; }
 .switch { appearance: none; width: 42px; height: 24px; border-radius: 999px; background: var(--line); position: relative; flex: none; cursor: pointer; margin: 0; }
 .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--paper); transition: left .15s; }
 .switch:checked { background: var(--accent); }
@@ -345,6 +371,14 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     </div>
     <div class="row" id="castRow" aria-label="Cast"></div>
     <div class="row" id="toolRow">
+      <button class="tool only-kb" data-act="done" aria-label="Hide keyboard">Done</button>
+      <button class="tool icon" data-act="undo" aria-label="Undo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+      </button>
+      <button class="tool icon" data-act="redo" aria-label="Redo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>
+      </button>
+      <span class="sep"></span>
       <button class="tool q" data-act="quote" title="Quote selection (Ctrl+')" aria-label="Wrap in double quotes">“ ”</button>
       <button class="tool q" data-act="squote" aria-label="Wrap in single quotes">‘ ’</button>
       <button class="tool q" data-act="ins" data-text="—" aria-label="Insert em dash">—</button>
@@ -827,9 +861,20 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     var d = cur();
     var castByName = {};
     d.cast.forEach(function (c) { castByName[c.name.toUpperCase()] = c; });
+    var saidRe = null;
+    if (d.mode === "prose" && d.cast.length) {
+      var names = d.cast.map(function (c) { return c.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }).join("|");
+      saidRe = new RegExp("(?:(?:" + TAG_VERBS + ")\\s+(" + names + ")|(" + names + ")\\s+(?:" + TAG_VERBS + "))(?![\\p{L}])", "u");
+    }
     Array.prototype.forEach.call(editor.children, function (p) {
       var txt = p.textContent;
       p.classList.toggle("empty", txt.length === 0);
+      if (saidRe) {
+        var sm = txt.indexOf("“") >= 0 && txt.match(saidRe);
+        var sc = sm && castByName[(sm[1] || sm[2]).toUpperCase()];
+        p.classList.toggle("said", !!sc);
+        if (sc) p.style.setProperty("--who", "var(--" + sc.color + ")"); else p.style.removeProperty("--who");
+      }
       if (d.mode === "script") {
         if (p.dataset.t === "character") {
           var who = castByName[txt.replace(/\s*\(.*\)\s*$/, "").trim().toUpperCase()];
@@ -1638,10 +1683,14 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     applyTheme(); writeStore();
     toast(dark ? "Light mode" : "Dark mode");
   }
+  var tallest = 0;
   function fitViewport() {
     var vv = window.visualViewport;
     if (!vv) return;
     var root = document.documentElement;
+    tallest = Math.max(tallest, vv.height);
+    var typing = document.activeElement && /^(INPUT|TEXTAREA)$|^P$|^DIV$/.test(document.activeElement.nodeName) && (document.activeElement === editor || document.activeElement.id === "title");
+    root.classList.toggle("kb", !!typing && vv.height < tallest - 140);
     var pad = parseFloat(getComputedStyle(root).paddingTop) + parseFloat(getComputedStyle(root).paddingBottom) || 0;
     root.style.setProperty("--vvh", (vv.height - pad) + "px");
     root.style.setProperty("--vvtop", vv.offsetTop + "px");
@@ -1703,6 +1752,13 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     if (t.dataset.act === "quote") { quoteSelection("“", "”"); return; }
     if (t.dataset.act === "squote") { quoteSelection("‘", "’"); return; }
     if (t.dataset.act === "ins") { restoreSel(); insertText(t.dataset.text); markDirty(); return; }
+    if (t.dataset.act === "undo" || t.dataset.act === "redo") {
+      restoreSel();
+      try { document.execCommand(t.dataset.act); } catch (err) { /* ignore */ }
+      pending = null; renderCast(); ensureBlocks(); decorateSoon(); markDirty();
+      return;
+    }
+    if (t.dataset.act === "done") { editor.blur(); if (document.activeElement) document.activeElement.blur(); return; }
     if (t.dataset.type) { setType(t.dataset.type); return; }
   });
   $("castRow").addEventListener("change", function (e) {
@@ -1914,6 +1970,8 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
 
   window.addEventListener("pagehide", flush);
   document.addEventListener("visibilitychange", function () { if (document.hidden) flush(); });
+  editor.addEventListener("focus", function () { setTimeout(fitViewport, 300); });
+  editor.addEventListener("blur", function () { setTimeout(fitViewport, 100); });
   if (window.visualViewport) {
     window.visualViewport.addEventListener("resize", fitViewport);
     window.visualViewport.addEventListener("scroll", fitViewport);
@@ -1927,6 +1985,11 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
   renderAccount();
   fitViewport();
   initCloud();
+
+  // offline + "Add to Home Screen" when hosted (GitHub Pages / Netlify)
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+    try { navigator.serviceWorker.register("sw.js").catch(function () {}); } catch (e) { /* not allowed here */ }
+  }
 
   // exposed for tests
   window.__inkling = { state: state, convertBlocks: convertBlocks, tagged: tagged, syllables: syllables, parseFountain: parseFountain, toFountain: toFountain };
