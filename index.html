@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Inkling</title>
-<meta name="theme-color" content="#e6eae2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#edf0f5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#111410" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -20,22 +20,36 @@
 /* Layout: one column of paper in a sage room; header on top, a thumb-reach dock at the bottom
    holding the cast (who's talking) and the tools. Prose/poem set in a book face, script in Courier. */
 :root {
-  --bg: #e6eae2;
-  --paper: #f8f9f5;
-  --ink: #1a1f19;
-  --muted: #646e60;
-  --line: #d2d8cc;
-  --well: #edf0e8;
-  --accent: #2f47b5;
+  --bg: #edf0f5;
+  --side: #e5e9f0;
+  --paper: #ffffff;
+  --ink: #1c1f29;
+  --muted: #5d6475;
+  --line: #d7dce6;
+  --well: #f2f4f8;
+  --accent: #3548c8;
   --accent-ink: #ffffff;
-  --hl: rgba(47, 71, 181, 0.12);
-  --danger: #b42318;
-  --c1: #c2410c; --c2: #2f47b5; --c3: #0f766e; --c4: #a21caf; --c5: #a16207; --c6: #4d7c0f;
+  --hl: rgba(53, 72, 200, 0.11);
+  --danger: #c0262d;
+  --c1: #d0501a; --c2: #3548c8; --c3: #0d7a6e; --c4: #a22bb5; --c5: #b27212; --c6: #3d8a1f;
   --f-prose: "Newsreader", "Iowan Old Style", Georgia, serif;
   --f-script: "Courier Prime", "Courier New", Courier, monospace;
   --f-ui: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --radius: 10px;
+  --shadow: 0 1px 0 rgba(20, 26, 45, 0.04), 0 8px 30px rgba(20, 26, 45, 0.08);
+}
+/* Light styles. Paper is the default; Sage is the original; Ivory is warmer. Dark mode overrides all three. */
+:root[data-light="sage"] {
+  --bg: #e6eae2; --side: #dfe4da; --paper: #f8f9f5; --ink: #1a1f19; --muted: #646e60; --line: #d2d8cc; --well: #edf0e8;
+  --accent: #2f47b5; --hl: rgba(47, 71, 181, 0.12); --danger: #b42318;
+  --c1: #c2410c; --c2: #2f47b5; --c3: #0f766e; --c4: #a21caf; --c5: #a16207; --c6: #4d7c0f;
   --shadow: 0 1px 0 rgba(20, 30, 20, 0.04), 0 8px 30px rgba(20, 30, 20, 0.08);
+}
+:root[data-light="ivory"] {
+  --bg: #ece8df; --side: #e5e0d5; --paper: #fffdf9; --ink: #24211c; --muted: #6d665b; --line: #dcd5c8; --well: #f5f1e9;
+  --accent: #1d5f74; --hl: rgba(29, 95, 116, 0.13); --danger: #b3261e;
+  --c1: #c2410c; --c2: #1d5f74; --c3: #3f7d4f; --c4: #9b2c8f; --c5: #9a6a12; --c6: #5a6ec2;
+  --shadow: 0 1px 0 rgba(60, 45, 20, 0.05), 0 8px 30px rgba(60, 45, 20, 0.09);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -270,6 +284,30 @@ svg { display: block; }
 }
 @media (min-width: 760px) { .m-prose p.said::after { left: -22px; } }
 
+/* ---------- thesaurus ---------- */
+.w-search { display: flex; gap: 6px; }
+.w-search input { flex: 1; min-width: 0; height: 38px; border: 1px solid var(--line); border-radius: 9px; background: var(--well); padding: 0 12px; font-size: 16px; }
+.w-search input:focus { outline: none; border-color: var(--accent); }
+.word-def { font-family: var(--f-prose); font-size: 15px; line-height: 1.45; margin: 10px 0 0; color: var(--ink); }
+.word-def:empty { display: none; }
+.word-def .pos { font-family: var(--f-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.wtabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 12px 0 8px; }
+.wtabs button { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 5px 11px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.wtabs button[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.w-hint { font-size: 12.5px; color: var(--muted); margin: 0 0 10px; }
+.w-hint b { color: var(--ink); }
+.wres h5 { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 12px 0 6px; }
+.wres h5:first-child { margin-top: 0; }
+.wgrid { display: flex; flex-wrap: wrap; gap: 6px; }
+.wchip { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--paper); }
+.wchip:hover { border-color: var(--accent); }
+.wchip button { border: 0; background: transparent; font-size: 14px; }
+.w-use { padding: 6px 4px 6px 12px; font-family: var(--f-prose); font-size: 15.5px !important; display: inline-flex; align-items: baseline; gap: 5px; }
+.w-use small { font-family: var(--f-ui); font-size: 10.5px; color: var(--muted); font-weight: 600; }
+.w-go { padding: 0 10px 0 6px; color: var(--muted); font-weight: 700; }
+.w-go:hover { color: var(--accent); }
+.w-note { color: var(--muted); font-size: 13px; margin: 4px 0; }
+
 /* ---------- sheets & drawer ---------- */
 .scrim { position: fixed; inset: 0; background: rgba(10, 14, 10, .42); z-index: 20; }
 .sheet {
@@ -415,6 +453,10 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
       <button class="tool" data-act="wordFwd" aria-label="Select the next word">Word ›</button>
       <button class="tool" data-act="wordDel" aria-label="Delete the previous word">⌫ Word</button>
       <span class="sep"></span>
+      <button class="tool" data-act="thes" title="Thesaurus (Ctrl+Shift+L)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5z"/><path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z"/></svg>
+        Thesaurus
+      </button>
       <button class="tool q" data-act="quote" title="Quote selection (Ctrl+')" aria-label="Wrap in double quotes">“ ”</button>
       <button class="tool q" data-act="squote" aria-label="Wrap in single quotes">‘ ’</button>
       <button class="tool q" data-act="ins" data-text="—" aria-label="Insert em dash">—</button>
@@ -472,6 +514,8 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
   <div>
     <div class="opt"><label for="setTheme">Theme</label>
       <select id="setTheme"><option value="system">Match device</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+    <div class="opt"><label for="setLight">Light style</label>
+      <select id="setLight"><option value="paper">Paper (white)</option><option value="sage">Sage (green-grey)</option><option value="ivory">Ivory (warm)</option></select></div>
     <div class="opt"><label for="setSmart">Curly quotes as you type</label><input type="checkbox" class="switch" id="setSmart"></div>
     <div class="opt"><label for="setPair">Auto-close quotes and brackets</label><input type="checkbox" class="switch" id="setPair"></div>
     <div class="opt"><label for="setTag">Dialogue tag</label>
@@ -544,9 +588,23 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
   <ol class="kbd-list">
     <li>Type <b>"</b> and the closing quote appears too, with the cursor in between. Type the closing quote and it steps over it. Backspace on an empty pair removes both.</li>
     <li>Select text and type <b>"</b>, <b>(</b> or <b>[</b> to wrap it.</li>
+    <li><b>Thesaurus</b>: put the cursor in a word and tap Thesaurus for similar words, opposites, rhymes and describing words. Tap one to swap it in.</li>
     <li><b>‹ Word</b> and <b>Word ›</b> select one word at a time; tap again to grow the selection. <b>⌫ Word</b> deletes the word before the cursor.</li>
   </ol>
   <div class="btn-row end"><button class="btn" id="helpKeys">Keyboard shortcuts</button><button class="btn primary" data-close>Close</button></div>
+</section>
+
+<section class="sheet" id="wordsSheet" hidden aria-label="Thesaurus">
+  <div class="grab"></div>
+  <h2>Thesaurus</h2>
+  <form class="w-search" id="wordsForm" autocomplete="off">
+    <input type="search" id="wordsQ" placeholder="Look up a word" autocapitalize="none" spellcheck="false" aria-label="Word">
+    <button class="btn primary" type="submit">Look up</button>
+  </form>
+  <p class="word-def" id="wordsDef"></p>
+  <div class="wtabs" id="wordsTabs" role="tablist"></div>
+  <p class="w-hint" id="wordsHint"></p>
+  <div class="wres" id="wordsRes"></div>
 </section>
 
 <section class="sheet" id="goalSheet" hidden aria-label="Word goal">
@@ -1618,7 +1676,7 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     $(id).hidden = false;
   }
   function closeSheets(keepScrim) {
-    ["tplSheet", "castSheet", "askSheet", "helpSheet", "goalSheet", "keysSheet"].forEach(function (s) { $(s).hidden = true; });
+    ["tplSheet", "castSheet", "askSheet", "helpSheet", "goalSheet", "keysSheet", "wordsSheet"].forEach(function (s) { $(s).hidden = true; });
     if (!keepScrim) $("sheetScrim").hidden = true;
   }
   function ask(title, text, buttons) {
@@ -1668,6 +1726,7 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     }).join("");
     $("setPair").checked = state.settings.autopair !== false;
     $("setTheme").value = state.settings.theme;
+    $("setLight").value = state.settings.light || "paper";
     $("setSmart").checked = !!state.settings.smart;
     $("setTag").value = state.settings.tag;
     $("setTense").value = state.settings.tense;
@@ -1850,6 +1909,179 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
   }
 
   /* ================================================================
+     Thesaurus — Datamuse (https://www.datamuse.com/api/): free, no key.
+     Where outside sites are blocked (the Claude preview) it asks Claude instead.
+     ================================================================ */
+  var WORDS_API = "https://api.datamuse.com/words";
+  var WORD_TABS = [
+    { id: "syn", label: "Similar", q: "ml" },
+    { id: "ant", label: "Opposite", q: "rel_ant" },
+    { id: "rhy", label: "Rhymes", q: "rel_rhy" },
+    { id: "adj", label: "Describe it", q: "rel_jjb" },
+    { id: "rel", label: "Related", q: "rel_trg" }
+  ];
+  var ASK = { syn: "synonyms and close alternatives", ant: "antonyms", rhy: "perfect rhymes", adj: "adjectives writers often use to describe it", rel: "words strongly associated with it" };
+  var POS = { n: "noun", v: "verb", adj: "adjective", adv: "adverb" };
+  var wordCache = {}, words = { q: "", tab: "syn", target: null, seq: 0 };
+  var sampleP = null;
+  function viaClaude(prompt) {
+    if (!window.claude || !window.claude.use) return Promise.reject(new Error("offline"));
+    sampleP = sampleP || window.claude.use("sample");
+    return sampleP.then(function (s) { if (!s) throw new Error("offline"); return s.json(prompt, { modelTier: "quick" }); });
+  }
+  function fetchJSON(url) {
+    return fetch(url).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+  }
+  function lookup(kind, word) {
+    var key = kind + ":" + word.toLowerCase();
+    if (wordCache[key]) return Promise.resolve(wordCache[key]);
+    var tab = WORD_TABS.filter(function (t) { return t.id === kind; })[0];
+    var get = function (param) {
+      return fetchJSON(WORDS_API + "?" + param + "=" + encodeURIComponent(word) + "&md=s&max=80").then(function (l) {
+        return l.map(function (x) { return { w: x.word, syl: x.numSyllables || syllables(x.word) }; });
+      });
+    };
+    return get(tab.q).then(function (l) {
+      if (kind === "rhy" && l.length < 12) return get("rel_nry").then(function (n) { return l.concat(n.map(function (x) { x.near = true; return x; })); });
+      return l;
+    }).then(null, function () {
+      return viaClaude("List up to 40 " + ASK[kind] + " for the English word \"" + word + "\", most useful first. Reply with JSON only: {\"words\":[\"...\"]}")
+        .then(function (r) { return ((r && r.words) || []).map(function (w) { return { w: String(w), syl: syllables(String(w)) }; }); });
+    }).then(function (l) {
+      var seen = {};
+      l = l.filter(function (x) {
+        var k = x.w.toLowerCase();
+        if (seen[k] || k === word.toLowerCase() || !/^\p{L}[\p{L}’' \-]*$/u.test(x.w)) return false;
+        seen[k] = 1; return true;
+      });
+      wordCache[key] = l;
+      return l;
+    });
+  }
+  function define(word) {
+    var key = "def:" + word.toLowerCase();
+    if (wordCache[key]) return Promise.resolve(wordCache[key]);
+    return fetchJSON(WORDS_API + "?sp=" + encodeURIComponent(word) + "&md=d&max=1").then(function (l) {
+      var hit = l[0] && l[0].word.toLowerCase() === word.toLowerCase() ? l[0].defs || [] : [];
+      return hit.map(function (s) { var t = s.split("\t"); return { pos: t[0], text: t[1] }; });
+    }).then(null, function () {
+      return viaClaude("Define the English word \"" + word + "\" in at most 2 short senses. Reply with JSON only: {\"defs\":[{\"pos\":\"n|v|adj|adv\",\"text\":\"...\"}]}")
+        .then(function (r) { return (r && r.defs) || []; }, function () { return []; });
+    }).then(function (d) { wordCache[key] = d; return d; });
+  }
+
+  /* the word to swap: the selection, or the word the cursor is in */
+  function wordAtCaret() {
+    var c = caretInfo();
+    if (!c || c.block !== c.endBlock) return null;
+    var txt = c.block.textContent, a = c.a, b = c.b, W = /[\p{L}\p{N}’'\-]/u;
+    if (c.collapsed) {
+      while (a > 0 && W.test(txt[a - 1])) a--;
+      while (b < txt.length && W.test(txt[b])) b++;
+    }
+    while (a < b && !/[\p{L}\p{N}]/u.test(txt[a])) a++;
+    while (b > a && !/[\p{L}\p{N}]/u.test(txt[b - 1])) b--;
+    var w = txt.slice(a, b);
+    if (!w || w.length > 40 || /\s{2,}/.test(w)) return null;
+    return { block: c.block, a: a, b: b, word: w };
+  }
+  function matchCase(orig, w) {
+    if (orig.length > 1 && orig === orig.toUpperCase() && /\p{L}/u.test(orig)) return w.toUpperCase();
+    if (/^\p{Lu}/u.test(orig)) return w.charAt(0).toUpperCase() + w.slice(1);
+    return w;
+  }
+  function openThesaurus() {
+    words.target = wordAtCaret();
+    if (cur().mode === "poem" && !words.q) words.tab = "rhy";
+    showThesaurus();
+    if (words.target) wordsGo(words.target.word);
+    else { renderWordTabs(); renderWordHint(); if (!words.q) $("wordsRes").innerHTML = "<p class=\"w-note\">Put the cursor in a word or select one, then open the thesaurus. Or type any word above.</p>"; }
+  }
+  function wordsGo(q, tab) {
+    q = (q || "").trim();
+    if (!q) return;
+    words.q = q;
+    if (tab) words.tab = tab;
+    $("wordsQ").value = q;
+    renderWordTabs(); renderWordHint();
+    var seq = ++words.seq;
+    $("wordsRes").innerHTML = "<p class=\"w-note\">Looking up “" + esc(q) + "”…</p>";
+    $("wordsDef").innerHTML = "";
+    define(q).then(function (d) {
+      if (seq !== words.seq) return;
+      $("wordsDef").innerHTML = d.slice(0, 2).map(function (x) { return "<span class=\"pos\">" + esc(POS[x.pos] || x.pos || "") + "</span> " + esc(x.text || ""); }).join("<br>");
+    });
+    lookup(words.tab, q).then(function (l) {
+      if (seq !== words.seq) return;
+      renderWordResults(l);
+    }, function () {
+      if (seq !== words.seq) return;
+      $("wordsRes").innerHTML = "<p class=\"w-note\">Couldn’t reach the thesaurus. Check that you’re online and try again.</p>";
+    });
+  }
+  function renderWordTabs() {
+    $("wordsTabs").innerHTML = WORD_TABS.map(function (t) {
+      return "<button role=\"tab\" data-wt=\"" + t.id + "\" aria-selected=\"" + (t.id === words.tab) + "\">" + t.label + "</button>";
+    }).join("");
+  }
+  function renderWordHint() {
+    var t = words.target;
+    $("wordsHint").innerHTML = t && editor.contains(t.block)
+      ? "Tap a word to swap it in for “<b>" + esc(t.word) + "</b>”. Tap › to look that word up instead."
+      : "Tap a word to add it at the cursor. Tap › to look it up.";
+  }
+  function chip(x, showSyl) {
+    return "<span class=\"wchip\"><button class=\"w-use\" data-w=\"" + esc(x.w) + "\">" + esc(x.w) + (showSyl ? "<small>" + x.syl + "</small>" : "") +
+      "</button><button class=\"w-go\" data-go=\"" + esc(x.w) + "\" title=\"Look up " + esc(x.w) + "\" aria-label=\"Look up " + esc(x.w) + "\">›</button></span>";
+  }
+  function renderWordResults(l) {
+    if (!l.length) { $("wordsRes").innerHTML = "<p class=\"w-note\">Nothing found for “" + esc(words.q) + "” here. Try another tab or a simpler form of the word.</p>"; return; }
+    var poem = cur().mode === "poem", html = "";
+    if (words.tab === "rhy") {
+      var groups = {}, near = [];
+      l.forEach(function (x) { if (x.near) near.push(x); else (groups[x.syl] = groups[x.syl] || []).push(x); });
+      Object.keys(groups).sort(function (a, b) { return a - b; }).forEach(function (n) {
+        html += "<h5>" + n + (n === "1" ? " syllable" : " syllables") + "</h5><div class=\"wgrid\">" + groups[n].slice(0, 30).map(function (x) { return chip(x, false); }).join("") + "</div>";
+      });
+      if (near.length) html += "<h5>Near rhymes</h5><div class=\"wgrid\">" + near.slice(0, 30).map(function (x) { return chip(x, true); }).join("") + "</div>";
+    } else {
+      html = "<div class=\"wgrid\">" + l.slice(0, 60).map(function (x) { return chip(x, poem); }).join("") + "</div>";
+    }
+    $("wordsRes").innerHTML = html;
+  }
+  function useWord(w) {
+    var t = words.target, from = t && t.word;
+    editor.focus({ preventScroll: true });
+    if (t && editor.contains(t.block) && t.block.textContent.slice(t.a, t.b) === t.word) {
+      var out = matchCase(t.word, w);
+      replaceRange(t.block, t.a, t.b, out);
+      setSel(t.block, t.a + out.length);
+      words.target = { block: t.block, a: t.a, b: t.a + out.length, word: out };
+    } else {
+      restoreSel();
+      var c = caretInfo(), prev = c && c.a > 0 ? c.block.textContent[c.a - 1] : "";
+      insertText((prev && !/\s/.test(prev) ? " " : "") + w);
+    }
+    decorateSoon(); markDirty(); renderWordHint();
+    return from;
+  }
+  function wireThesaurus(afterUse) {
+    $("wordsForm").addEventListener("submit", function (e) { e.preventDefault(); wordsGo($("wordsQ").value); });
+    $("wordsTabs").addEventListener("click", function (e) { var b = e.target.closest("[data-wt]"); if (b) wordsGo(words.q, b.dataset.wt); });
+    $("wordsRes").addEventListener("mousedown", function (e) { if (e.target.closest(".w-use")) e.preventDefault(); });
+    $("wordsRes").addEventListener("click", function (e) {
+      var u = e.target.closest("[data-w]"), g = e.target.closest("[data-go]");
+      if (g) { wordsGo(g.dataset.go); return; }
+      if (u) { var from = useWord(u.dataset.w); if (afterUse) afterUse(from, u.dataset.w); }
+    });
+  }
+
+  function showThesaurus() {
+    editor.blur();
+    openSheet("wordsSheet");
+  }
+
+  /* ================================================================
      Word goal sheet & shortcuts page
      ================================================================ */
   var GOAL_PRESETS = [
@@ -1883,6 +2115,7 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     var groups = [
       ["Dialogue", [[k(A, "1–9"), "Speak as cast member 1–9"], [k("Enter"), "Finish the line and add the tag"], [k("Esc"), "Cancel an open line"], [k(C, "'"), "Quote the selection"]]],
       ["Moving and selecting", [[k(W, "←") + " / " + k("→"), "Jump one word"], [k(W, "Shift", "←") + " / " + k("→"), "Select one word at a time"], [k(W, "Backspace"), "Delete the word before the cursor"], [k(W, "Delete"), "Delete the word after the cursor"]]],
+      ["Words", [[k(C, "Shift", "L"), "Thesaurus for the word at the cursor"]]],
       ["Typing", [[k("\"") + " " + k("(") + " " + k("["), "Type both halves; with text selected, wrap it"], [k("Backspace"), "Inside an empty pair, removes both halves"]]],
       ["Script", [[k("Tab"), "Next element type"], [k("Shift", "Tab"), "Previous element type"], [k("Enter"), "New line with the next element (Character → Dialogue → Action)"]]]
     ];
@@ -1896,7 +2129,11 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
      Theme & viewport
      ================================================================ */
   function applyTheme() {
-    var t = state.settings.theme;
+    var t = state.settings.theme, l = state.settings.light || "paper";
+    if (l === "paper") document.documentElement.removeAttribute("data-light");
+    else document.documentElement.setAttribute("data-light", l);
+    var light = { paper: "#edf0f5", sage: "#e6eae2", ivory: "#ece8df" }[l];
+    document.querySelectorAll("meta[name=theme-color]").forEach(function (m) { if (/light/.test(m.media)) m.content = light; });
     if (t === "system") document.documentElement.removeAttribute("data-theme");
     else document.documentElement.setAttribute("data-theme", t);
   }
@@ -1983,6 +2220,7 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     }
     if (t.dataset.act === "wordBack" || t.dataset.act === "wordFwd") { restoreSel(); wordMove(t.dataset.act === "wordBack" ? -1 : 1, true); return; }
     if (t.dataset.act === "wordDel") { restoreSel(); wordDelete(-1); ensureBlocks(); decorateSoon(); markDirty(); return; }
+    if (t.dataset.act === "thes") { restoreSel(); openThesaurus(); return; }
     if (t.dataset.act === "done") { editor.blur(); if (document.activeElement) document.activeElement.blur(); return; }
     if (t.dataset.type) { setType(t.dataset.type); return; }
   });
@@ -2024,6 +2262,7 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
   editor.addEventListener("keydown", function (e) {
     var d = cur();
     if (wordKeys(e)) { decorateSoon(); markDirty(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "l") { e.preventDefault(); openThesaurus(); return; }
     if (e.key === "Tab" && d.mode === "script") {
       e.preventDefault();
       var b = curBlock(); if (!b) return;
@@ -2153,6 +2392,11 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
   $("keysBtn").addEventListener("click", function () { closeDrawer(); openKeys(); });
   $("helpKeys").addEventListener("click", openKeys);
   $("stat").addEventListener("click", openGoal);
+  $("setLight").addEventListener("change", function () { state.settings.light = this.value; applyTheme(); writeStore(); });
+  wireThesaurus(function (from, to) {
+    closeSheets();
+    toast(from ? "Swapped “" + from + "” for “" + to + "”" : "Added “" + to + "”", "Undo", function () { editor.focus(); document.execCommand("undo"); });
+  });
   $("setPair").addEventListener("change", function () { state.settings.autopair = this.checked; writeStore(); });
   $("goalNum").addEventListener("input", function () { cur().goal = Math.max(0, parseInt(this.value, 10) || 0); goalChanged(); });
   $("goalClear").addEventListener("click", function () { cur().goal = 0; $("goalNum").value = ""; goalChanged(); closeSheets(); });

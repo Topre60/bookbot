@@ -105,6 +105,7 @@ function createWindow() {
   // right-click: spelling fixes, clipboard, and the writing actions for a selection
   win.webContents.on("context-menu", (_e, p) => {
     const items = [];
+    if (!p.selectionText && p.isEditable && !p.misspelledWord) items.push({ label: "Thesaurus for This Word", click: send("thes") }, { type: "separator" });
     if (p.misspelledWord) {
       p.dictionarySuggestions.slice(0, 5).forEach((w) => items.push({ label: w, click: () => win.webContents.replaceMisspelling(w) }));
       if (!p.dictionarySuggestions.length) items.push({ label: "No suggestions", enabled: false });
@@ -113,6 +114,8 @@ function createWindow() {
     }
     const hasSel = !!(p.selectionText && p.selectionText.trim());
     if (hasSel && p.isEditable) {
+      const word = p.selectionText.trim();
+      if (word.length < 40 && !/\s{2,}/.test(word)) items.push({ label: "Thesaurus: “" + (word.length > 20 ? word.slice(0, 20) + "…" : word) + "”", click: send("thes") });
       items.push({ label: "Quote Selection “ ”", click: send("quote") });
       items.push({ label: "Move to Side Notes", accelerator: "CmdOrCtrl+Shift+M", click: send("notes:move") });
       items.push({ label: "Copy to Side Notes", accelerator: "CmdOrCtrl+Shift+J", click: send("notes:copy") });
@@ -198,6 +201,7 @@ function buildMenu() {
         { label: "Move Selection to Side Notes", accelerator: "CmdOrCtrl+Shift+M", click: send("notes:move") },
         { label: "Copy Selection to Side Notes", accelerator: "CmdOrCtrl+Shift+J", click: send("notes:copy") },
         { type: "separator" },
+        { label: "Thesaurus…", accelerator: "CmdOrCtrl+Shift+L", click: send("thes") },
         { label: "Word Goal or Limit…", accelerator: "CmdOrCtrl+Shift+G", click: send("goal") },
         { label: "Command Palette…", accelerator: "CmdOrCtrl+K", click: send("palette") },
       ],

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' file: data:; img-src 'self' data:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.datamuse.com; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' file: data:; img-src 'self' data:">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Inkling</title>
 <link rel="stylesheet" href="../node_modules/@fontsource/figtree/400.css">
@@ -129,10 +129,21 @@
         <button role="tab" data-tab="cast" aria-selected="true">Cast</button>
         <button role="tab" data-tab="outline" aria-selected="false">Outline</button>
         <button role="tab" data-tab="stats" aria-selected="false">Stats</button>
+        <button role="tab" data-tab="words" aria-selected="false">Thesaurus</button>
       </div>
       <div class="tab-body" id="tabCast"></div>
       <div class="tab-body" id="tabOutline" hidden></div>
       <div class="tab-body" id="tabStats" hidden></div>
+      <div class="tab-body" id="tabWords" hidden>
+        <form class="w-search" id="wordsForm" autocomplete="off">
+          <input type="search" id="wordsQ" placeholder="Look up a word" spellcheck="false" aria-label="Word">
+          <button class="btn primary sm" type="submit">Look up</button>
+        </form>
+        <p class="word-def" id="wordsDef"></p>
+        <div class="wtabs" id="wordsTabs" role="tablist"></div>
+        <p class="w-hint" id="wordsHint"></p>
+        <div class="wres" id="wordsRes"></div>
+      </div>
       <div class="notes-handle" id="notesHandle" title="Drag to resize" aria-hidden="true"></div>
       <section class="notes" id="notes" aria-label="Side notes">
         <div class="notes-head">
@@ -180,6 +191,8 @@
   <div class="modal-head"><h2>Settings</h2><button class="icon-btn sm" data-close aria-label="Close">✕</button></div>
   <div class="opt"><label for="setTheme">Theme</label>
     <select id="setTheme"><option value="system">Match system</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+  <div class="opt"><label for="setLight">Light style</label>
+    <select id="setLight"><option value="paper">Paper (white)</option><option value="sage">Sage (green-grey)</option><option value="ivory">Ivory (warm)</option></select></div>
   <div class="opt"><label for="setSmart">Curly quotes as you type</label><input type="checkbox" class="switch" id="setSmart"></div>
   <div class="opt"><label for="setPair">Auto-close quotes and brackets</label><input type="checkbox" class="switch" id="setPair"></div>
   <div class="opt"><label for="setTag">Dialogue tag</label>

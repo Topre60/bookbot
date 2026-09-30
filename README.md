@@ -25,6 +25,15 @@ Both versions: quotes and brackets close themselves as you type (select text and
 type `"` to wrap it), a word goal can be a target or a limit (tap the word count),
 and poem lines show a syllable count.
 
+**Thesaurus** (both): put the cursor in a word and open the thesaurus for similar
+words, opposites, rhymes (grouped by syllables), describing words and related
+words, with a short definition. Tap a result to swap it in. It uses the free
+[Datamuse API](https://www.datamuse.com/api/) (no key, no sign-up). Inside the
+Claude preview, which can't reach outside sites, it asks Claude instead.
+
+**Light styles** (Settings → Light style): Paper (white, the new default),
+Sage (the original green-grey) and Ivory (warm).
+
 ## What it does
 
 - **Cast bar for fast dialogue.** Add characters (e.g. Jun = `J`, Lena = `L`).

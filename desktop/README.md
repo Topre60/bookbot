@@ -30,6 +30,9 @@ The builds aren't signed with a paid certificate yet, so the first launch needs 
   and you can type quick notes straight into the box.
 - **Word goal or limit** (click the word count): a target to reach, or a maximum like a 100-word drabble. Text past a limit turns red.
 - **Typing helpers**: quotes and brackets close themselves (select text and type `"` to wrap it), and `Ctrl`/`⌥` + arrows moves a word at a time.
+- **Thesaurus** tab (`⌘/Ctrl ⇧ L`, right-click a word, or the selection toolbar): similar words, opposites, rhymes,
+  describing words and definitions from the free Datamuse API. Click a result to swap it in, click another to try that one instead.
+- **Light styles**: Paper (default), Sage or Ivory in Settings.
 - **Keyboard shortcuts page**: `⌘/Ctrl /`, or Help → Keyboard Shortcuts.
 - **Character notes**: each cast member has a notes field and a colour, and shows how many lines they have.
 - **Who talks most**: dialogue share per character in Stats, plus session words, reading time, pages and screen time.
@@ -58,6 +61,7 @@ The builds aren't signed with a paid certificate yet, so the first launch needs 
 | `Ctrl`/`⌥` + `Backspace` | Delete the previous word |
 | `⌘/Ctrl` + `⇧` + `M` / `J` | Move / copy the selection to side notes |
 | `⌘/Ctrl` + `⇧` + `G` | Word goal or limit |
+| `⌘/Ctrl` + `⇧` + `L` | Thesaurus for the word at the cursor |
 | `⌘/Ctrl` + `/` | All keyboard shortcuts |
 
 ## Develop

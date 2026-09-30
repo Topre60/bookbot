@@ -2,26 +2,39 @@
    Layout: three panes — library on the left, a sheet of paper in the middle, cast/outline/stats on the right.
    Same palette and faces as the phone version so the two feel like one product. */
 :root {
-  --bg: #e6eae2;
-  --side: #dfe4da;
-  --paper: #f8f9f5;
-  --ink: #1a1f19;
-  --muted: #646e60;
-  --line: #d0d6ca;
-  --well: #edf0e8;
-  --accent: #2f47b5;
+  --bg: #edf0f5;
+  --side: #e5e9f0;
+  --paper: #ffffff;
+  --ink: #1c1f29;
+  --muted: #5d6475;
+  --line: #d7dce6;
+  --well: #f2f4f8;
+  --accent: #3548c8;
   --accent-ink: #ffffff;
-  --hl: rgba(47, 71, 181, 0.12);
-  --danger: #b42318;
-  --c1: #c2410c; --c2: #2f47b5; --c3: #0f766e; --c4: #a21caf; --c5: #a16207; --c6: #4d7c0f;
+  --hl: rgba(53, 72, 200, 0.11);
+  --danger: #c0262d;
+  --c1: #d0501a; --c2: #3548c8; --c3: #0d7a6e; --c4: #a22bb5; --c5: #b27212; --c6: #3d8a1f;
   --f-prose: "Newsreader", "Iowan Old Style", Georgia, serif;
   --f-script: "Courier Prime", "Courier New", Courier, monospace;
   --f-ui: "Figtree", -apple-system, "Segoe UI", system-ui, sans-serif;
-  --shadow: 0 1px 0 rgba(20, 30, 20, 0.04), 0 10px 40px rgba(20, 30, 20, 0.09);
+  --shadow: 0 1px 0 rgba(20, 26, 45, 0.04), 0 10px 40px rgba(20, 26, 45, 0.09);
   --sidew: 256px;
   --panelw: 304px;
   --scale: 1;
   color-scheme: light;
+}
+/* Light styles. Paper is the default; Sage is the original; Ivory is warmer. Dark mode overrides all three. */
+:root[data-light="sage"] {
+  --bg: #e6eae2; --side: #dfe4da; --paper: #f8f9f5; --ink: #1a1f19; --muted: #646e60; --line: #d2d8cc; --well: #edf0e8;
+  --accent: #2f47b5; --hl: rgba(47, 71, 181, 0.12); --danger: #b42318;
+  --c1: #c2410c; --c2: #2f47b5; --c3: #0f766e; --c4: #a21caf; --c5: #a16207; --c6: #4d7c0f;
+  --shadow: 0 1px 0 rgba(20, 30, 20, 0.04), 0 8px 30px rgba(20, 30, 20, 0.08);
+}
+:root[data-light="ivory"] {
+  --bg: #ece8df; --side: #e5e0d5; --paper: #fffdf9; --ink: #24211c; --muted: #6d665b; --line: #dcd5c8; --well: #f5f1e9;
+  --accent: #1d5f74; --hl: rgba(29, 95, 116, 0.13); --danger: #b3261e;
+  --c1: #c2410c; --c2: #1d5f74; --c3: #3f7d4f; --c4: #9b2c8f; --c5: #9a6a12; --c6: #5a6ec2;
+  --shadow: 0 1px 0 rgba(60, 45, 20, 0.05), 0 8px 30px rgba(60, 45, 20, 0.09);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -393,3 +406,31 @@ kbd { font-family: var(--f-script); font-size: 11.5px; border: 1px solid var(--l
 .bubble .q { font-family: var(--f-prose); font-size: 16px; }
 .bubble .key { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--who); color: var(--paper); font-size: 11px; font-weight: 700; }
 .bubble .bsep { width: 1px; height: 18px; background: rgba(127,127,127,.4); margin: 0 2px; }
+
+/* ---------- thesaurus ---------- */
+.w-search { display: flex; gap: 6px; }
+.w-search input { flex: 1; min-width: 0; height: 32px; border: 1px solid var(--line); border-radius: 9px; background: var(--well); padding: 0 12px; font-size: 13.5px; }
+.w-search input:focus { outline: none; border-color: var(--accent); }
+.word-def { font-family: var(--f-prose); font-size: 15px; line-height: 1.45; margin: 10px 0 0; color: var(--ink); }
+.word-def:empty { display: none; }
+.word-def .pos { font-family: var(--f-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.wtabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 12px 0 8px; }
+.wtabs button { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 5px 11px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.wtabs button[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.w-hint { font-size: 12.5px; color: var(--muted); margin: 0 0 10px; }
+.w-hint b { color: var(--ink); }
+.wres h5 { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 12px 0 6px; }
+.wres h5:first-child { margin-top: 0; }
+.wgrid { display: flex; flex-wrap: wrap; gap: 6px; }
+.wchip { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--paper); }
+.wchip:hover { border-color: var(--accent); }
+.wchip button { border: 0; background: transparent; font-size: 14px; }
+.w-use { padding: 6px 4px 6px 12px; font-family: var(--f-prose); font-size: 15.5px !important; display: inline-flex; align-items: baseline; gap: 5px; }
+.w-use small { font-family: var(--f-ui); font-size: 10.5px; color: var(--muted); font-weight: 600; }
+.w-go { padding: 0 10px 0 6px; color: var(--muted); font-weight: 700; }
+.w-go:hover { color: var(--accent); }
+.w-note { color: var(--muted); font-size: 13px; margin: 4px 0; }
+.tab-body .w-search .btn { height: 32px; }
+.tab-body .wtabs button { font-size: 12px; padding: 4px 9px; }
+.tab-body .w-use { font-size: 14.5px !important; }
+.tabs button { padding-left: 8px; padding-right: 8px; }
