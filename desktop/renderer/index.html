@@ -111,12 +111,15 @@
         </div>
       </div>
       <footer class="statusbar" id="statusbar">
-        <span id="stWords"></span>
-        <span class="goal" id="stGoalWrap" hidden><span class="goal-bar"><span id="stGoal"></span></span><span id="stGoalTxt"></span></span>
+        <button class="st-btn" id="stGoalBtn" title="Word goal or limit">
+          <span id="stWords"></span>
+          <span class="goal" id="stGoalWrap" hidden><span class="goal-bar"><span id="stGoal"></span></span><span id="stGoalTxt"></span></span>
+        </button>
         <span id="stExtra"></span>
         <span class="grow"></span>
         <span id="stSession"></span>
         <span id="stSaved"></span>
+        <button class="st-btn" id="stKeys" title="Keyboard shortcuts">⌨ Shortcuts</button>
       </footer>
     </main>
 
@@ -130,6 +133,17 @@
       <div class="tab-body" id="tabCast"></div>
       <div class="tab-body" id="tabOutline" hidden></div>
       <div class="tab-body" id="tabStats" hidden></div>
+      <div class="notes-handle" id="notesHandle" title="Drag to resize" aria-hidden="true"></div>
+      <section class="notes" id="notes" aria-label="Side notes">
+        <div class="notes-head">
+          <h4>Side notes <span id="notesCount"></span></h4>
+          <button class="link-btn" id="notesToggle" aria-expanded="true">Hide</button>
+        </div>
+        <div class="notes-body" id="notesBody">
+          <textarea id="noteInput" rows="2" placeholder="Jot a note. Enter adds it, Shift+Enter for a new line."></textarea>
+          <ul class="note-list" id="noteList"></ul>
+        </div>
+      </section>
     </aside>
   </div>
 </div>
@@ -167,6 +181,7 @@
   <div class="opt"><label for="setTheme">Theme</label>
     <select id="setTheme"><option value="system">Match system</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
   <div class="opt"><label for="setSmart">Curly quotes as you type</label><input type="checkbox" class="switch" id="setSmart"></div>
+  <div class="opt"><label for="setPair">Auto-close quotes and brackets</label><input type="checkbox" class="switch" id="setPair"></div>
   <div class="opt"><label for="setTag">Dialogue tag</label>
     <select id="setTag"><option value="verb-name">“Hi,” says Jun.</option><option value="name-verb">“Hi,” Jun says.</option><option value="before">Jun says, “Hi.”</option></select></div>
   <div class="opt"><label for="setTense">Tag tense</label>
@@ -200,13 +215,35 @@
     <li><kbd>Ctrl/⌘</kbd>+<kbd>K</kbd> command palette: jump to any piece or run any command.</li>
     <li><kbd>Ctrl/⌘</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> focus mode. <kbd>Ctrl/⌘</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> typewriter scrolling.</li>
     <li>Each piece is a <code>.inkling</code> file in your library folder, saved as you type.</li>
+    <li>Select lines and press <kbd>Ctrl/⌘</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> to move them into <b>Side notes</b> (bottom right), or <kbd>Ctrl/⌘</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd> to copy. <b>Insert</b> puts a note back at the cursor.</li>
   </ul>
+  <div class="btn-row end"><button class="btn" id="helpKeys">All keyboard shortcuts</button></div>
 </section>
 
 <section class="palette" id="palette" hidden aria-label="Command palette">
   <input id="palInput" type="text" placeholder="Type a command or the name of a piece" autocomplete="off" spellcheck="false">
   <ul id="palList" role="listbox"></ul>
 </section>
+
+<section class="modal" id="goalModal" hidden aria-label="Word goal">
+  <div class="modal-head"><h2>Word goal</h2><button class="icon-btn sm" data-close aria-label="Close">✕</button></div>
+  <p class="lede">A target to reach, or a limit to stay under, like a 100-word drabble or a 1,000-word flash contest. Text past a limit turns red.</p>
+  <div class="seg big" role="group" aria-label="Goal type">
+    <button data-gt="target" aria-pressed="true">Target · at least</button>
+    <button data-gt="limit" aria-pressed="false">Limit · at most</button>
+  </div>
+  <div class="opt"><label for="goalNum">Words</label><input type="text" inputmode="numeric" id="goalNum" placeholder="No goal"></div>
+  <div class="presets" id="goalPresets"></div>
+  <p class="goal-preview" id="goalPreview"></p>
+  <div class="btn-row end"><button class="btn" id="goalClear">No goal</button><button class="btn primary" data-close>Done</button></div>
+</section>
+
+<section class="modal wide" id="keysModal" hidden aria-label="Keyboard shortcuts">
+  <div class="modal-head"><h2>Keyboard shortcuts</h2><button class="icon-btn sm" data-close aria-label="Close">✕</button></div>
+  <div class="keys-grid" id="keysBody"></div>
+</section>
+
+<div class="bubble" id="bubble" hidden role="toolbar" aria-label="Selection"></div>
 
 <div class="toast" id="toast" hidden role="status"><span id="toastMsg"></span><button id="toastAct" hidden></button></div>
 

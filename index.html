@@ -106,7 +106,32 @@ svg { display: block; }
   font-size: 13px; font-weight: 600; color: var(--muted);
 }
 .seg button[aria-pressed="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
-.stat { margin-left: auto; min-width: 0; text-align: right; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stat {
+  margin-left: auto; min-width: 0; text-align: right; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums;
+  background: transparent; border: 0; padding: 6px 4px; border-radius: 7px;
+}
+.stat:hover { background: var(--well); }
+.stat .over-n { color: var(--danger); font-weight: 700; }
+.top { position: relative; }
+.goalbar { position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; background: transparent; }
+.goalbar span { display: block; height: 100%; width: 0; background: var(--c3); transition: width .3s, background .3s; }
+.goalbar.limit span { background: var(--accent); }
+.goalbar.near span { background: var(--c5); }
+.goalbar.over span { background: var(--danger); }
+.editor p.over { color: var(--danger); opacity: .6; }
+.editor p.cross { text-decoration: underline dotted var(--danger); text-decoration-thickness: 2px; text-underline-offset: 5px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.presets button { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 600; }
+.presets button span { color: var(--muted); font-weight: 500; margin-left: 4px; }
+.presets button[aria-pressed="true"] { border-color: var(--accent); background: var(--hl); }
+.goal-preview { font-size: 14px; color: var(--muted); margin: 4px 0 0; }
+.goal-preview b { color: var(--ink); }
+.sheet .seg { margin: 0 0 14px; }
+.sheet .seg button { padding: 8px 14px; font-size: 14px; }
+.keys { width: 100%; border-collapse: collapse; font-size: 14px; }
+.keys td { padding: 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.keys td:first-child { white-space: nowrap; padding-right: 14px; }
+.keys tr:last-child td { border-bottom: 0; }
 .stat b { color: var(--ink); font-weight: 600; }
 .saved-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--c6); margin-right: 5px; vertical-align: 1px; }
 .saved-dot.dirty { background: var(--c5); }
@@ -148,14 +173,14 @@ svg { display: block; }
 .m-prose p[data-t="h"].empty[data-ph]::before { font-style: normal; }
 
 /* poem */
-.editor.m-poem { font-family: var(--f-prose); font-size: 1.2rem; line-height: 1.85; counter-reset: ln; padding-left: 2.2em; padding-right: 3.2em; }
+.editor.m-poem { font-family: var(--f-prose); font-size: 1.2rem; line-height: 1.85; counter-reset: ln; padding-left: 2.2em; padding-right: 4.4em; }
 .m-poem p:not(.empty) { counter-increment: ln; }
 .m-poem p:not(.empty)::before {
   content: counter(ln); position: absolute; left: -2.4em; width: 1.8em; text-align: right;
   font-family: var(--f-ui); font-size: .68rem; color: var(--muted); top: .55em; line-height: 1; font-variant-numeric: tabular-nums;
 }
 .m-poem p[data-syl]::after {
-  content: attr(data-syl); position: absolute; right: -3.3em; top: .5em; line-height: 1;
+  content: attr(data-syl) " syl"; position: absolute; right: -4.5em; top: .5em; line-height: 1;
   font-family: var(--f-ui); font-size: .68rem; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums;
   padding: 3px 5px; border-radius: 5px; background: var(--well);
 }
@@ -361,8 +386,9 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
         <button data-mode="script" aria-pressed="false">Script</button>
         <button data-mode="poem" aria-pressed="false">Poem</button>
       </div>
-      <span class="stat" id="stat"></span>
+      <button class="stat" id="stat" title="Word goal"></button>
     </div>
+    <div class="goalbar" id="goalbar" aria-hidden="true"><span></span></div>
   </header>
 
   <main class="scroll" id="scroll">
@@ -385,6 +411,9 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
       <button class="tool icon" data-act="redo" aria-label="Redo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>
       </button>
+      <button class="tool" data-act="wordBack" aria-label="Select the previous word">‹ Word</button>
+      <button class="tool" data-act="wordFwd" aria-label="Select the next word">Word ›</button>
+      <button class="tool" data-act="wordDel" aria-label="Delete the previous word">⌫ Word</button>
       <span class="sep"></span>
       <button class="tool q" data-act="quote" title="Quote selection (Ctrl+')" aria-label="Wrap in double quotes">“ ”</button>
       <button class="tool q" data-act="squote" aria-label="Wrap in single quotes">‘ ’</button>
@@ -428,9 +457,9 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     <button class="btn" id="dupBtn">Duplicate</button>
     <button class="btn danger" id="delBtn">Delete</button>
   </div>
-  <div class="field" style="margin-top:12px">
-    <label for="goal">Word goal</label>
-    <input type="number" id="goal" min="0" step="50" placeholder="None">
+  <div class="btn-row" style="margin-top:8px">
+    <button class="btn" id="goalBtn">Word goal or limit…</button>
+    <button class="btn" id="keysBtn">Keyboard shortcuts</button>
   </div>
 
   <h3 style="font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px">Import</h3>
@@ -444,6 +473,7 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     <div class="opt"><label for="setTheme">Theme</label>
       <select id="setTheme"><option value="system">Match device</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
     <div class="opt"><label for="setSmart">Curly quotes as you type</label><input type="checkbox" class="switch" id="setSmart"></div>
+    <div class="opt"><label for="setPair">Auto-close quotes and brackets</label><input type="checkbox" class="switch" id="setPair"></div>
     <div class="opt"><label for="setTag">Dialogue tag</label>
       <select id="setTag"><option value="verb-name">“Hi,” says Jun.</option><option value="name-verb">“Hi,” Jun says.</option><option value="before">Jun says, “Hi.”</option></select></div>
     <div class="opt"><label for="setTense">Tag tense</label>
@@ -510,12 +540,34 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     <li>In Script, Enter picks the next element for you (Character → Dialogue → Action). Lines starting with INT. or EXT. become scene headings.</li>
     <li>Script pages export as Fountain, which Final Draft, Highland and WriterSolo open.</li>
   </ol>
-  <h3>Keyboard</h3>
-  <ul class="kbd-list">
-    <li><kbd>Ctrl</kbd> + <kbd>'</kbd> quote the selection</li>
-    <li><kbd>Alt</kbd> + <kbd>1</kbd>–<kbd>9</kbd> speak as a cast member</li>
-    <li><kbd>Tab</kbd> in Script cycles the element type</li>
-  </ul>
+  <h3>Typing helpers</h3>
+  <ol class="kbd-list">
+    <li>Type <b>"</b> and the closing quote appears too, with the cursor in between. Type the closing quote and it steps over it. Backspace on an empty pair removes both.</li>
+    <li>Select text and type <b>"</b>, <b>(</b> or <b>[</b> to wrap it.</li>
+    <li><b>‹ Word</b> and <b>Word ›</b> select one word at a time; tap again to grow the selection. <b>⌫ Word</b> deletes the word before the cursor.</li>
+  </ol>
+  <div class="btn-row end"><button class="btn" id="helpKeys">Keyboard shortcuts</button><button class="btn primary" data-close>Close</button></div>
+</section>
+
+<section class="sheet" id="goalSheet" hidden aria-label="Word goal">
+  <div class="grab"></div>
+  <h2>Word goal</h2>
+  <p class="lede">A target to reach, or a limit to stay under, like a 100-word drabble or a 1,000-word flash contest. Words past a limit turn red.</p>
+  <div class="seg" role="group" aria-label="Goal type">
+    <button data-gt="target" aria-pressed="true">Target · at least</button>
+    <button data-gt="limit" aria-pressed="false">Limit · at most</button>
+  </div>
+  <div class="field"><label for="goalNum">Words</label><input type="number" id="goalNum" inputmode="numeric" min="0" step="50" placeholder="No goal"></div>
+  <div class="presets" id="goalPresets"></div>
+  <p class="goal-preview" id="goalPreview"></p>
+  <div class="btn-row end"><button class="btn" id="goalClear">No goal</button><button class="btn primary" data-close>Done</button></div>
+</section>
+
+<section class="sheet" id="keysSheet" hidden aria-label="Keyboard shortcuts">
+  <div class="grab"></div>
+  <h2>Keyboard shortcuts</h2>
+  <p class="lede">For a tablet or phone with a keyboard attached.</p>
+  <div id="keysBody"></div>
   <div class="btn-row end"><button class="btn primary" data-close>Close</button></div>
 </section>
 
@@ -907,6 +959,7 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
         } else delete p.dataset.syl;
       } else delete p.dataset.syl;
     });
+    markOverLimit(d);
     if (pending) {
       if (!editor.contains(pending.block)) { pending = null; renderCast(); }
       else {
@@ -917,16 +970,116 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     }
   }
 
+  /* syllables: rules for English plus a list of common words the rules get wrong */
+  var SYL_EXCEPT = { every: 2, everything: 3, everyone: 3, everywhere: 3, evening: 2, different: 3, family: 3, poem: 2, poems: 2, poet: 2, quiet: 2, science: 2, lion: 2, idea: 3, area: 3, being: 2, create: 2, created: 3, business: 2, beautiful: 3, people: 2, fire: 1, hour: 1, our: 1, flower: 2, flowers: 2, power: 2, towards: 2, toward: 2, heaven: 2, maybe: 2, somewhere: 2, someone: 2, something: 2, sometimes: 2, anyone: 3, orange: 2, forever: 3, whisper: 2, whispered: 2, naked: 2, wicked: 2, sacred: 2, beloved: 3, learned: 1, real: 1, ocean: 2, ancient: 2, special: 2, usual: 3, actually: 4, interesting: 3, chocolate: 3, vegetable: 4, comfortable: 3, lonely: 2, silence: 2, moonlight: 2, starlight: 2, shoreline: 2, likely: 2, lovely: 2, eye: 1, eyes: 1, one: 1, once: 1, the: 1, iron: 2, via: 2, radio: 3, piano: 3, video: 3, violet: 3, diamond: 2, dying: 2, lying: 2, crying: 2, trying: 2, flying: 2, going: 2, doing: 2, seeing: 2, saying: 2, playing: 2, tired: 2, cruel: 2, fuel: 2, jewel: 2, poetry: 3, cafe: 2, recipe: 3, simile: 3, apostrophe: 4, catastrophe: 4 };
+  function wordSyl(w) {
+    w = w.toLowerCase().replace(/[’']/g, "").replace(/[^a-z]/g, "");
+    if (!w) return 0;
+    if (SYL_EXCEPT[w] != null) return SYL_EXCEPT[w];
+    if (w.length <= 3) return 1;
+    var base = w;
+    var extra = 0;
+    if (/(?:s|x|z|ch|sh|c|g)es$/.test(base)) { base = base.slice(0, -2); extra = 1; }   // boxes, places, roses
+    else if (/[^aeiouy]es$/.test(base)) base = base.slice(0, -2);                       // homes, leaves
+    else if (/[^aeiou]ed$/.test(base) && !/[td]ed$/.test(base)) base = base.slice(0, -2); // jumped, leaned
+    // silent e inside compounds: lonely, hopeful, movement, homeless, timeline
+    base = base.replace(/([^aeiouy])e(ly|ful|ment|ness|less|line|like)$/, "$1$2");
+    // silent final e, but "-le" after a consonant is its own syllable (table, little)
+    if (/[^aeiouy]le$/.test(base)) { /* keep */ }
+    else if (/[^aeiouy]e$/.test(base) || /[aeiou][^aeiouy]e$/.test(base)) base = base.slice(0, -1);
+    base = base.replace(/^y/, "");
+    var groups = base.match(/[aeiouy]+/g) || [];
+    var n = groups.length;
+    // vowel pairs that are two syllables: radio, piano, lion, react, create
+    var splits = base.match(/[^cst]i[aou]|eo|ua(?!y)|uo|iet|ier$|rea(?![dlmnpst])|ia$/g);
+    if (splits) n += splits.length;
+    return Math.max(1, n + extra);
+  }
   function syllables(line) {
-    var words = line.toLowerCase().match(/[a-z’']+/g) || [];
-    return words.reduce(function (sum, w) {
-      w = w.replace(/[’']/g, "");
-      if (!w) return sum;
-      if (w.length <= 3) return sum + 1;
-      w = w.replace(/(?:[^laeiouy]es|[^laeiouy]ed|[^laeiouy]e)$/, "").replace(/^y/, "");
-      var m = w.match(/[aeiouy]{1,2}/g);
-      return sum + (m ? m.length : 1);
-    }, 0);
+      return (line.match(/[A-Za-z’']+/g) || []).reduce(function (s, w) { return s + wordSyl(w); }, 0);
+    }
+
+  /* ---------------- auto-closing pairs, like a code editor ---------------- */
+  var PAIRS = { "“": "”", "‘": "’", "(": ")", "[": "]", "\"": "\"" };
+  var CLOSERS = { "”": 1, "’": 1, ")": 1, "]": 1, "\"": 1 };
+  function smartChar(ch, prev) {
+    var opening = !prev || /[\s(\[{“‘—–\-]/.test(prev);
+    if (ch === "\"") return state.settings.smart ? (opening ? "“" : "”") : "\"";
+    if (ch === "'") return state.settings.smart ? (opening ? "‘" : "’") : "'";
+    return ch;
+  }
+  /* handles a typed quote or bracket; returns false to let the browser type it */
+  function typeChar(data) {
+    var c = caretInfo();
+    if (!c) return false;
+    var auto = state.settings.autopair !== false;
+    var txt = c.block.textContent, prev = c.a > 0 ? txt[c.a - 1] : "";
+    var ch = smartChar(data, prev);
+    // typing an opener over a selection wraps it: “selection”
+    if (auto && !c.collapsed && PAIRS[ch] && ch !== "’" && c.block === c.endBlock) {
+      var a = c.a, b = c.b;
+      replaceRange(c.block, a, b, ch + txt.slice(a, b) + PAIRS[ch]);
+      setSel(c.block, a + 1, b + 1);
+      return true;
+    }
+    if (!c.collapsed) { document.execCommand("delete"); c = caretInfo(); if (!c) return false; txt = c.block.textContent; prev = c.a > 0 ? txt[c.a - 1] : ""; ch = smartChar(data, prev); }
+    var next = txt[c.a] || "";
+    // step over a closer that's already there
+    if (auto && CLOSERS[ch] && next === ch) { setSel(c.block, c.a + 1); return true; }
+    if (ch === "”" && auto && next === "\"") { setSel(c.block, c.a + 1); return true; }
+    var closingStraight = ch === "\"" && prev && !/[\s(\[{]/.test(prev);
+    if (auto && PAIRS[ch] && !closingStraight && (!next || /[\s.,;:!?)\]”’—…]/.test(next))) {
+      insertText(ch + PAIRS[ch]);
+      var cc = caretInfo();
+      setSel(cc.block, cc.a - 1);
+      return true;
+    }
+    if (ch !== data) { insertText(ch); return true; }
+    return false;
+  }
+  /* Backspace inside an empty pair removes both halves */
+  function backspacePair() {
+    if (state.settings.autopair === false) return false;
+    var c = caretInfo();
+    if (!c || !c.collapsed || c.a === 0) return false;
+    var txt = c.block.textContent, o = txt[c.a - 1], n = txt[c.a];
+    if (!PAIRS[o] || PAIRS[o] !== n) return false;
+    replaceRange(c.block, c.a - 1, c.a + 1, "");
+    return true;
+  }
+
+  /* ---------------- word-at-a-time moving, selecting and deleting ---------------- */
+  function wordMove(dir, extend) {
+    var s = getSelection();
+    if (!s.modify || !s.rangeCount) return;
+    s.modify(extend ? "extend" : "move", dir < 0 ? "backward" : "forward", "word");
+  }
+  function wordDelete(dir) {
+    var s = getSelection();
+    if (!s.rangeCount) return;
+    if (s.isCollapsed && s.modify) s.modify("extend", dir < 0 ? "backward" : "forward", "word");
+    document.execCommand("delete");
+  }
+  /* Ctrl (or ⌥ on a Mac) + ←/→ jumps a word, add Shift to select, + Backspace/Delete removes a word */
+  function wordKeys(e) {
+    var mod = (e.ctrlKey || e.altKey) && !e.metaKey;
+    if (!mod) return false;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); wordMove(e.key === "ArrowLeft" ? -1 : 1, e.shiftKey); return true; }
+    if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); wordDelete(e.key === "Backspace" ? -1 : 1); return true; }
+    return false;
+  }
+
+  function countWords(s) { var m = s.match(/[\p{L}\p{N}][\p{L}\p{N}’'\-]*/gu); return m ? m.length : 0; }
+
+  /* word goal: a target to reach, or a limit not to pass */
+  function markOverLimit(d) {
+    var limit = d.goal && d.goalType === "limit" ? d.goal : 0, run = 0;
+    Array.prototype.forEach.call(editor.children, function (p) {
+      var n = countWords(p.textContent), before = run;
+      run += n;
+      p.classList.toggle("over", !!limit && before >= limit && n > 0);
+      p.classList.toggle("cross", !!limit && before < limit && run > limit);
+    });
   }
 
   function wordCount(d) {
@@ -940,7 +1093,19 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     collectLight();
     var words = wordCount(d);
     var bits = ["<span class=\"saved-dot" + (savedFlag ? "" : " dirty") + "\" aria-hidden=\"true\"></span>"];
-    bits.push("<b>" + words.toLocaleString() + "</b>" + (d.goal ? " / " + d.goal.toLocaleString() : "") + " words");
+    var bar = $("goalbar");
+    bar.className = "goalbar";
+    bar.firstChild.style.width = d.goal ? Math.min(100, words / d.goal * 100) + "%" : "0";
+    if (d.goal && d.goalType === "limit") {
+      var over = words - d.goal;
+      bar.classList.add("limit");
+      if (over > 0) bar.classList.add("over"); else if (words >= d.goal * 0.9) bar.classList.add("near");
+      bits.push(over > 0
+        ? "<span class=\"over-n\">" + words.toLocaleString() + "</span> / " + d.goal.toLocaleString() + " max · <span class=\"over-n\">" + over.toLocaleString() + " over</span>"
+        : "<b>" + words.toLocaleString() + "</b> / " + d.goal.toLocaleString() + " max");
+    } else {
+      bits.push("<b>" + words.toLocaleString() + "</b>" + (d.goal ? " / " + d.goal.toLocaleString() : "") + " words");
+    }
     if (d.mode === "script") {
       // ~55 lines per page; one page ≈ one minute of screen time
       var lines = d.blocks.reduce(function (s, b) {
@@ -952,9 +1117,9 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     }
     if (d.mode === "poem") {
       var ln = d.blocks.filter(function (b) { return b.x.trim(); }).length;
-      bits.push(ln + " lines");
+      bits.push(ln + " lines · " + d.blocks.reduce(function (n, b) { return n + syllables(b.x); }, 0) + " syl");
     }
-    $("stat").innerHTML = bits.join(" · ");
+    $("stat").innerHTML = bits[0] + bits.slice(1).join(" · ");
   }
   function collectLight() {
     // keep d.blocks roughly in sync for counts without rebuilding metadata
@@ -1453,7 +1618,7 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
     $(id).hidden = false;
   }
   function closeSheets(keepScrim) {
-    ["tplSheet", "castSheet", "askSheet", "helpSheet"].forEach(function (s) { $(s).hidden = true; });
+    ["tplSheet", "castSheet", "askSheet", "helpSheet", "goalSheet", "keysSheet"].forEach(function (s) { $(s).hidden = true; });
     if (!keepScrim) $("sheetScrim").hidden = true;
   }
   function ask(title, text, buttons) {
@@ -1501,7 +1666,7 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
         "<span class=\"dt\">" + esc(d.title || "Untitled") + "</span><span class=\"badge\">" + MODE_NAME[d.mode] + "</span>" +
         "<span class=\"dm\">" + wordCount(d).toLocaleString() + " words · " + ago + "</span></li>";
     }).join("");
-    $("goal").value = cur().goal || "";
+    $("setPair").checked = state.settings.autopair !== false;
     $("setTheme").value = state.settings.theme;
     $("setSmart").checked = !!state.settings.smart;
     $("setTag").value = state.settings.tag;
@@ -1685,6 +1850,49 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
   }
 
   /* ================================================================
+     Word goal sheet & shortcuts page
+     ================================================================ */
+  var GOAL_PRESETS = [
+    [50, "Mini saga", "limit"], [100, "Drabble", "limit"], [300, ""], [500, ""], [1000, "Flash", "limit"],
+    [2500, ""], [7500, "Short story"], [17500, "Novelette"], [50000, "Novel"]
+  ];
+  function openGoal() {
+    flush();
+    $("goalNum").value = cur().goal || "";
+    renderGoal();
+    openSheet("goalSheet");
+  }
+  function renderGoal() {
+    var d = cur(), words = wordCount(d), limit = d.goalType === "limit";
+    document.querySelectorAll("[data-gt]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.gt === (limit ? "limit" : "target"))); });
+    $("goalPresets").innerHTML = GOAL_PRESETS.map(function (p) {
+      return "<button data-n=\"" + p[0] + "\"" + (p[2] ? " data-type=\"" + p[2] + "\"" : "") + " aria-pressed=\"" + (d.goal === p[0]) + "\">" + p[0].toLocaleString() + (p[1] ? "<span>" + p[1] + "</span>" : "") + "</button>";
+    }).join("");
+    var msg = "";
+    if (d.goal && limit) msg = words > d.goal ? "<b>" + (words - d.goal).toLocaleString() + " words over</b> the limit. The extra text is marked in red." : "<b>" + (d.goal - words).toLocaleString() + " words</b> left before the limit.";
+    else if (d.goal) msg = words >= d.goal ? "<b>Goal reached.</b> " + words.toLocaleString() + " words." : "<b>" + (d.goal - words).toLocaleString() + " words</b> to go.";
+    else msg = "No goal set. You’re at " + words.toLocaleString() + " words.";
+    $("goalPreview").innerHTML = msg;
+  }
+  function goalChanged() { markDirty(); renderGoal(); decorateSoon(); updateStat(); }
+
+  function openKeys() {
+    var mac = /Mac|iPhone|iPad/.test(navigator.platform) || /Mac OS/.test(navigator.userAgent);
+    var C = mac ? "⌘" : "Ctrl", A = mac ? "⌥" : "Alt", W = mac ? "⌥ or Ctrl" : "Ctrl";
+    var k = function () { return Array.prototype.map.call(arguments, function (x) { return "<kbd>" + x + "</kbd>"; }).join(" + "); };
+    var groups = [
+      ["Dialogue", [[k(A, "1–9"), "Speak as cast member 1–9"], [k("Enter"), "Finish the line and add the tag"], [k("Esc"), "Cancel an open line"], [k(C, "'"), "Quote the selection"]]],
+      ["Moving and selecting", [[k(W, "←") + " / " + k("→"), "Jump one word"], [k(W, "Shift", "←") + " / " + k("→"), "Select one word at a time"], [k(W, "Backspace"), "Delete the word before the cursor"], [k(W, "Delete"), "Delete the word after the cursor"]]],
+      ["Typing", [[k("\"") + " " + k("(") + " " + k("["), "Type both halves; with text selected, wrap it"], [k("Backspace"), "Inside an empty pair, removes both halves"]]],
+      ["Script", [[k("Tab"), "Next element type"], [k("Shift", "Tab"), "Previous element type"], [k("Enter"), "New line with the next element (Character → Dialogue → Action)"]]]
+    ];
+    $("keysBody").innerHTML = groups.map(function (g) {
+      return "<h3>" + g[0] + "</h3><table class=\"keys\">" + g[1].map(function (r) { return "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td></tr>"; }).join("") + "</table>";
+    }).join("");
+    openSheet("keysSheet");
+  }
+
+  /* ================================================================
      Theme & viewport
      ================================================================ */
   function applyTheme() {
@@ -1718,7 +1926,7 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
   function renderAll() {
     var d = cur();
     $("title").value = d.title || "";
-    document.querySelectorAll(".seg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.mode === d.mode)); });
+    document.querySelectorAll(".seg button[data-mode]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.mode === d.mode)); });
     document.querySelectorAll("[data-when]").forEach(function (el) { el.hidden = el.dataset.when !== d.mode; });
     renderEditor();
     renderCast();
@@ -1773,6 +1981,8 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
       pending = null; renderCast(); ensureBlocks(); decorateSoon(); markDirty();
       return;
     }
+    if (t.dataset.act === "wordBack" || t.dataset.act === "wordFwd") { restoreSel(); wordMove(t.dataset.act === "wordBack" ? -1 : 1, true); return; }
+    if (t.dataset.act === "wordDel") { restoreSel(); wordDelete(-1); ensureBlocks(); decorateSoon(); markDirty(); return; }
     if (t.dataset.act === "done") { editor.blur(); if (document.activeElement) document.activeElement.blur(); return; }
     if (t.dataset.type) { setType(t.dataset.type); return; }
   });
@@ -1787,15 +1997,12 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
       handleEnter();
       return;
     }
-    if (it === "insertText" && state.settings.smart && (e.data === "\"" || e.data === "'")) {
-      var c = caretInfo();
-      if (!c) return;
-      var prev = c.a > 0 ? c.block.textContent[c.a - 1] : "";
-      var opening = !prev || /[\s(\[{“‘—–-]/.test(prev);
+    if (it === "insertText" && e.data && e.data.length === 1 && "\"'“‘”’()[]".indexOf(e.data) >= 0) {
       e.preventDefault();
-      if (!c.collapsed) document.execCommand("delete");
-      insertText(e.data === "\"" ? (opening ? "“" : "”") : (opening ? "‘" : "’"));
+      if (!typeChar(e.data)) insertText(e.data);
+      return;
     }
+    if (it === "deleteContentBackward" && backspacePair()) { e.preventDefault(); return; }
   });
 
   editor.addEventListener("input", function (e) {
@@ -1816,6 +2023,7 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
 
   editor.addEventListener("keydown", function (e) {
     var d = cur();
+    if (wordKeys(e)) { decorateSoon(); markDirty(); return; }
     if (e.key === "Tab" && d.mode === "script") {
       e.preventDefault();
       var b = curBlock(); if (!b) return;
@@ -1871,7 +2079,7 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
 
   $("title").addEventListener("input", function () { cur().title = this.value; markDirty(); });
   $("title").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); editor.focus(); } });
-  document.querySelectorAll(".seg button").forEach(function (b) { b.addEventListener("click", function () { switchMode(b.dataset.mode); }); });
+  document.querySelectorAll(".seg button[data-mode]").forEach(function (b) { b.addEventListener("click", function () { switchMode(b.dataset.mode); }); });
   $("themeBtn").addEventListener("click", cycleTheme);
   $("helpBtn").addEventListener("click", function () { openSheet("helpSheet"); });
   $("libBtn").addEventListener("click", openDrawer);
@@ -1941,7 +2149,24 @@ kbd { font-family: var(--f-script); font-size: 12px; border: 1px solid var(--lin
       setTimeout(function () { $("title").focus(); }, 60);
     });
   });
-  $("goal").addEventListener("input", function () { cur().goal = Math.max(0, parseInt(this.value, 10) || 0); markDirty(); updateStat(); });
+  $("goalBtn").addEventListener("click", function () { closeDrawer(); openGoal(); });
+  $("keysBtn").addEventListener("click", function () { closeDrawer(); openKeys(); });
+  $("helpKeys").addEventListener("click", openKeys);
+  $("stat").addEventListener("click", openGoal);
+  $("setPair").addEventListener("change", function () { state.settings.autopair = this.checked; writeStore(); });
+  $("goalNum").addEventListener("input", function () { cur().goal = Math.max(0, parseInt(this.value, 10) || 0); goalChanged(); });
+  $("goalClear").addEventListener("click", function () { cur().goal = 0; $("goalNum").value = ""; goalChanged(); closeSheets(); });
+  document.querySelectorAll("[data-gt]").forEach(function (b) {
+    b.addEventListener("click", function () { cur().goalType = b.dataset.gt; goalChanged(); });
+  });
+  $("goalPresets").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-n]"); if (!b) return;
+    var d = cur();
+    d.goal = +b.dataset.n;
+    if (b.dataset.type) d.goalType = b.dataset.type;
+    $("goalNum").value = d.goal;
+    goalChanged();
+  });
   $("copyBtn").addEventListener("click", function () { flush(); copyText(plainText(cur())); });
   $("exportBtn").addEventListener("click", function () {
     flush();

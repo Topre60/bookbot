@@ -189,7 +189,7 @@ code { font-family: var(--f-script); font-size: 12px; }
 .editor.m-poem { font-family: var(--f-prose); font-size: calc(1.3rem * var(--scale)); line-height: 1.85; counter-reset: ln; max-width: 34rem; margin: 0 auto; }
 .m-poem p:not(.empty) { counter-increment: ln; }
 .m-poem p:not(.empty)::before { content: counter(ln); position: absolute; left: -3em; width: 2em; text-align: right; font-family: var(--f-ui); font-size: .6em; color: var(--muted); top: .7em; line-height: 1; font-variant-numeric: tabular-nums; }
-.m-poem p[data-syl]::after { content: attr(data-syl); position: absolute; right: -4.2em; top: .6em; line-height: 1; font-family: var(--f-ui); font-size: .6em; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; padding: 3px 6px; border-radius: 5px; background: var(--well); }
+.m-poem p[data-syl]::after { content: attr(data-syl) " syl"; position: absolute; right: -5.6em; top: .6em; line-height: 1; font-family: var(--f-ui); font-size: .6em; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; padding: 3px 6px; border-radius: 5px; background: var(--well); }
 .m-poem p.syl-ok::after { color: var(--c3); }
 .m-poem p.syl-off::after { color: var(--c1); }
 
@@ -324,3 +324,72 @@ kbd { font-family: var(--f-script); font-size: 11.5px; border: 1px solid var(--l
 @media (max-width: 1100px) { .body { --panelw: 260px; --sidew: 220px; } .page { padding: 56px 56px 50vh; } }
 @media (max-width: 940px) { .page { padding: 40px 36px 50vh; } .scroll { padding: 20px 16px 0; } }
 @media (max-width: 1100px) { #paletteBtn { display: none; } }
+
+/* ---------- word goal ---------- */
+.st-btn { border: 0; background: transparent; color: inherit; font: inherit; padding: 2px 6px; border-radius: 5px; display: inline-flex; align-items: center; gap: 10px; }
+.st-btn:hover { background: var(--well); color: var(--ink); }
+.over-n { color: var(--danger); font-weight: 700; }
+.goal-bar.limit span { background: var(--accent); }
+.goal-bar.near span { background: var(--c5); }
+.goal-bar.over span { background: var(--danger); }
+.editor p.over { color: var(--danger); opacity: .6; }
+.editor p.cross { text-decoration: underline dotted var(--danger); text-decoration-thickness: 2px; text-underline-offset: 5px; }
+.seg.big { margin: 0 0 6px; }
+.seg.big button { padding: 6px 14px; font-size: 13px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.presets button { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 5px 11px; font-size: 12.5px; font-weight: 600; }
+.presets button span { color: var(--muted); font-weight: 500; margin-left: 4px; }
+.presets button[aria-pressed="true"] { border-color: var(--accent); background: var(--hl); }
+.presets button:hover { border-color: var(--muted); }
+.goal-preview { color: var(--muted); margin: 0; }
+.goal-preview b { color: var(--ink); }
+
+/* ---------- shortcuts page ---------- */
+.keys-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 4px 28px; margin-top: 6px; }
+.keys { width: 100%; border-collapse: collapse; }
+.keys td { padding: 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.keys td:first-child { white-space: nowrap; padding-right: 14px; width: 1%; }
+.keys tr:last-child td { border-bottom: 0; }
+
+/* ---------- side notes (bottom of the right panel) ---------- */
+.panel { position: relative; }
+.panel .tab-body { min-height: 90px; }
+.notes-handle { height: 7px; margin-top: -3px; cursor: row-resize; flex: none; position: relative; z-index: 1; }
+.notes-handle::after { content: ""; position: absolute; left: 50%; top: 2px; width: 36px; height: 3px; margin-left: -18px; border-radius: 3px; background: var(--line); }
+.notes-handle:hover::after { background: var(--muted); }
+.notes { height: var(--notesh, 44%); min-height: 44px; flex: none; display: flex; flex-direction: column; border-top: 1px solid var(--line); background: var(--bg); }
+.notes.collapsed { height: auto; }
+.notes.collapsed .notes-body { display: none; }
+.notes-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 6px; }
+.notes-head h4 { margin: 0; }
+.notes-head h4 span { color: var(--muted); font-weight: 600; letter-spacing: 0; }
+.notes-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 0 12px 12px; }
+#noteInput { width: 100%; resize: none; border: 1px solid var(--line); background: var(--paper); border-radius: 8px; padding: 7px 9px; font-size: 12.5px; line-height: 1.45; }
+#noteInput:focus { outline: none; border-color: var(--accent); }
+.note-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.note { background: var(--paper); border: 1px solid var(--line); border-left: 3px solid var(--c5); border-radius: 8px; padding: 8px 10px 6px; }
+.note.from-script { border-left-color: var(--c3); }
+.note.from-poem { border-left-color: var(--c4); }
+.note-text { white-space: pre-wrap; font-family: var(--f-prose); font-size: 14px; line-height: 1.5; outline: none; overflow-wrap: anywhere; }
+.note.from-script .note-text { font-family: var(--f-script); font-size: 12.5px; }
+.note-text:focus { background: var(--well); border-radius: 4px; }
+.note-foot { display: flex; align-items: center; gap: 2px; margin-top: 4px; font-size: 11px; color: var(--muted); }
+.note-foot span { margin-right: auto; }
+.note-foot button { border: 0; background: transparent; color: var(--muted); font-weight: 600; font-size: 11.5px; padding: 2px 6px; border-radius: 5px; }
+.note-foot button:hover { background: var(--well); color: var(--ink); }
+.note-foot button[data-nact="del"]:hover { color: var(--danger); }
+.notes-empty { color: var(--muted); font-size: 12px; line-height: 1.5; padding: 2px 2px 0; }
+.note.flash { animation: noteIn .5s ease-out; }
+@keyframes noteIn { from { background: var(--hl); transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .note.flash { animation: none; } }
+
+/* ---------- selection bubble ---------- */
+.bubble {
+  position: fixed; z-index: 15; display: flex; align-items: center; gap: 3px; padding: 4px;
+  background: var(--ink); color: var(--paper); border-radius: 9px; box-shadow: 0 8px 24px rgba(0,0,0,.22);
+}
+.bubble button { border: 0; background: transparent; color: var(--paper); height: 28px; padding: 0 9px; border-radius: 6px; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+.bubble button:hover { background: rgba(127,127,127,.28); }
+.bubble .q { font-family: var(--f-prose); font-size: 16px; }
+.bubble .key { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--who); color: var(--paper); font-size: 11px; font-weight: 700; }
+.bubble .bsep { width: 1px; height: 18px; background: rgba(127,127,127,.4); margin: 0 2px; }

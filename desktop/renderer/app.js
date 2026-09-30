@@ -361,6 +361,7 @@
         else delete p.dataset.syl;
       } else delete p.dataset.syl;
     });
+    markOverLimit(d);
     if (pending) {
       if (!editor.contains(pending.block)) { pending = null; renderCastStrip(); }
       else {
@@ -371,19 +372,116 @@
     }
     markCurrent();
   }
-  function syllables(line) {
-    var words = line.toLowerCase().match(/[a-z’']+/g) || [];
-    return words.reduce(function (sum, w) {
-      w = w.replace(/[’']/g, "");
-      if (!w) return sum;
-      if (w.length <= 3) return sum + 1;
-      w = w.replace(/(?:[^laeiouy]es|[^laeiouy]ed|[^laeiouy]e)$/, "").replace(/^y/, "");
-      var m = w.match(/[aeiouy]{1,2}/g);
-      return sum + (m ? m.length : 1);
-    }, 0);
+  /* syllables: rules for English plus a list of common words the rules get wrong */
+  var SYL_EXCEPT = { every: 2, everything: 3, everyone: 3, everywhere: 3, evening: 2, different: 3, family: 3, poem: 2, poems: 2, poet: 2, quiet: 2, science: 2, lion: 2, idea: 3, area: 3, being: 2, create: 2, created: 3, business: 2, beautiful: 3, people: 2, fire: 1, hour: 1, our: 1, flower: 2, flowers: 2, power: 2, towards: 2, toward: 2, heaven: 2, maybe: 2, somewhere: 2, someone: 2, something: 2, sometimes: 2, anyone: 3, orange: 2, forever: 3, whisper: 2, whispered: 2, naked: 2, wicked: 2, sacred: 2, beloved: 3, learned: 1, real: 1, ocean: 2, ancient: 2, special: 2, usual: 3, actually: 4, interesting: 3, chocolate: 3, vegetable: 4, comfortable: 3, lonely: 2, silence: 2, moonlight: 2, starlight: 2, shoreline: 2, likely: 2, lovely: 2, eye: 1, eyes: 1, one: 1, once: 1, the: 1, iron: 2, via: 2, radio: 3, piano: 3, video: 3, violet: 3, diamond: 2, dying: 2, lying: 2, crying: 2, trying: 2, flying: 2, going: 2, doing: 2, seeing: 2, saying: 2, playing: 2, tired: 2, cruel: 2, fuel: 2, jewel: 2, poetry: 3, cafe: 2, recipe: 3, simile: 3, apostrophe: 4, catastrophe: 4 };
+  function wordSyl(w) {
+    w = w.toLowerCase().replace(/[’']/g, "").replace(/[^a-z]/g, "");
+    if (!w) return 0;
+    if (SYL_EXCEPT[w] != null) return SYL_EXCEPT[w];
+    if (w.length <= 3) return 1;
+    var base = w;
+    var extra = 0;
+    if (/(?:s|x|z|ch|sh|c|g)es$/.test(base)) { base = base.slice(0, -2); extra = 1; }   // boxes, places, roses
+    else if (/[^aeiouy]es$/.test(base)) base = base.slice(0, -2);                       // homes, leaves
+    else if (/[^aeiou]ed$/.test(base) && !/[td]ed$/.test(base)) base = base.slice(0, -2); // jumped, leaned
+    // silent e inside compounds: lonely, hopeful, movement, homeless, timeline
+    base = base.replace(/([^aeiouy])e(ly|ful|ment|ness|less|line|like)$/, "$1$2");
+    // silent final e, but "-le" after a consonant is its own syllable (table, little)
+    if (/[^aeiouy]le$/.test(base)) { /* keep */ }
+    else if (/[^aeiouy]e$/.test(base) || /[aeiou][^aeiouy]e$/.test(base)) base = base.slice(0, -1);
+    base = base.replace(/^y/, "");
+    var groups = base.match(/[aeiouy]+/g) || [];
+    var n = groups.length;
+    // vowel pairs that are two syllables: radio, piano, lion, react, create
+    var splits = base.match(/[^cst]i[aou]|eo|ua(?!y)|uo|iet|ier$|rea(?![dlmnpst])|ia$/g);
+    if (splits) n += splits.length;
+    return Math.max(1, n + extra);
   }
+  function syllables(line) {
+      return (line.match(/[A-Za-z’']+/g) || []).reduce(function (s, w) { return s + wordSyl(w); }, 0);
+    }
+
+  /* ---------------- auto-closing pairs, like a code editor ---------------- */
+  var PAIRS = { "“": "”", "‘": "’", "(": ")", "[": "]", "\"": "\"" };
+  var CLOSERS = { "”": 1, "’": 1, ")": 1, "]": 1, "\"": 1 };
+  function smartChar(ch, prev) {
+    var opening = !prev || /[\s(\[{“‘—–\-]/.test(prev);
+    if (ch === "\"") return state.settings.smart ? (opening ? "“" : "”") : "\"";
+    if (ch === "'") return state.settings.smart ? (opening ? "‘" : "’") : "'";
+    return ch;
+  }
+  /* handles a typed quote or bracket; returns false to let the browser type it */
+  function typeChar(data) {
+    var c = caretInfo();
+    if (!c) return false;
+    var auto = state.settings.autopair !== false;
+    var txt = c.block.textContent, prev = c.a > 0 ? txt[c.a - 1] : "";
+    var ch = smartChar(data, prev);
+    // typing an opener over a selection wraps it: “selection”
+    if (auto && !c.collapsed && PAIRS[ch] && ch !== "’" && c.block === c.endBlock) {
+      var a = c.a, b = c.b;
+      replaceRange(c.block, a, b, ch + txt.slice(a, b) + PAIRS[ch]);
+      setSel(c.block, a + 1, b + 1);
+      return true;
+    }
+    if (!c.collapsed) { document.execCommand("delete"); c = caretInfo(); if (!c) return false; txt = c.block.textContent; prev = c.a > 0 ? txt[c.a - 1] : ""; ch = smartChar(data, prev); }
+    var next = txt[c.a] || "";
+    // step over a closer that's already there
+    if (auto && CLOSERS[ch] && next === ch) { setSel(c.block, c.a + 1); return true; }
+    if (ch === "”" && auto && next === "\"") { setSel(c.block, c.a + 1); return true; }
+    var closingStraight = ch === "\"" && prev && !/[\s(\[{]/.test(prev);
+    if (auto && PAIRS[ch] && !closingStraight && (!next || /[\s.,;:!?)\]”’—…]/.test(next))) {
+      insertText(ch + PAIRS[ch]);
+      var cc = caretInfo();
+      setSel(cc.block, cc.a - 1);
+      return true;
+    }
+    if (ch !== data) { insertText(ch); return true; }
+    return false;
+  }
+  /* Backspace inside an empty pair removes both halves */
+  function backspacePair() {
+    if (state.settings.autopair === false) return false;
+    var c = caretInfo();
+    if (!c || !c.collapsed || c.a === 0) return false;
+    var txt = c.block.textContent, o = txt[c.a - 1], n = txt[c.a];
+    if (!PAIRS[o] || PAIRS[o] !== n) return false;
+    replaceRange(c.block, c.a - 1, c.a + 1, "");
+    return true;
+  }
+
+  /* ---------------- word-at-a-time moving, selecting and deleting ---------------- */
+  function wordMove(dir, extend) {
+    var s = getSelection();
+    if (!s.modify || !s.rangeCount) return;
+    s.modify(extend ? "extend" : "move", dir < 0 ? "backward" : "forward", "word");
+  }
+  function wordDelete(dir) {
+    var s = getSelection();
+    if (!s.rangeCount) return;
+    if (s.isCollapsed && s.modify) s.modify("extend", dir < 0 ? "backward" : "forward", "word");
+    document.execCommand("delete");
+  }
+  /* Ctrl (or ⌥ on a Mac) + ←/→ jumps a word, add Shift to select, + Backspace/Delete removes a word */
+  function wordKeys(e) {
+    var mod = (e.ctrlKey || e.altKey) && !e.metaKey;
+    if (!mod) return false;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); wordMove(e.key === "ArrowLeft" ? -1 : 1, e.shiftKey); return true; }
+    if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); wordDelete(e.key === "Backspace" ? -1 : 1); return true; }
+    return false;
+  }
+
   function countWords(s) { var m = s.match(/[\p{L}\p{N}][\p{L}\p{N}’'\-]*/gu); return m ? m.length : 0; }
   function wordCount(d) { return d.blocks.reduce(function (n, b) { return n + countWords(b.x); }, 0); }
+  function markOverLimit(d) {
+    var limit = d.goal && d.goalType === "limit" ? d.goal : 0, run = 0;
+    Array.prototype.forEach.call(editor.children, function (p) {
+      var n = countWords(p.textContent), before = run;
+      run += n;
+      p.classList.toggle("over", !!limit && before >= limit && n > 0);
+      p.classList.toggle("cross", !!limit && before < limit && run > limit);
+    });
+  }
   function scriptPages(d) {
     var lines = d.blocks.reduce(function (s, b) {
       var w = b.t === "dialogue" ? 35 : b.t === "paren" ? 25 : 60;
@@ -780,7 +878,7 @@
         "<div class=\"ccard-head\"><input class=\"key-in\" data-f=\"key\" maxlength=\"3\" value=\"" + esc(c.key) + "\" aria-label=\"Button letter\">" +
         "<input class=\"name-in\" data-f=\"name\" value=\"" + esc(c.name) + "\" aria-label=\"Name\" spellcheck=\"false\"></div>" +
         "<textarea data-f=\"notes\" placeholder=\"Look, voice, what they want…\" aria-label=\"Notes\">" + esc(c.notes || "") + "</textarea>" +
-        "<div class=\"ccard-foot\"><span class=\"sc\">" + (i < 9 ? "Alt+" + (i + 1) + " · " : "") + lineCount(c) + " lines</span><div class=\"swatches\">" +
+        "<div class=\"ccard-foot\"><span class=\"sc\">" + (i < 9 ? "Alt+" + (i + 1) + " · " : "") + lineCount(c) + (lineCount(c) === 1 ? " line" : " lines") + "</span><div class=\"swatches\">" +
         COLORS.map(function (k) { return "<button class=\"swatch\" data-sw=\"" + k + "\" style=\"--sw:var(--" + k + ")\" aria-pressed=\"" + (k === c.color) + "\" aria-label=\"Colour\"></button>"; }).join("") +
         "</div><button class=\"link-btn\" data-cdel title=\"Remove from cast\">Remove</button></div></div>";
     }).join("");
@@ -870,7 +968,7 @@
         return "<div class=\"share-row\" style=\"--who:var(--" + x.c.color + ")\"><span class=\"nm\">" + esc(x.c.name || "?") + "</span><span class=\"bar\"><span style=\"width:" + pc + "%\"></span></span><span class=\"pc\">" + x.n + "</span></div>";
       }).join("") + "</div>";
     }
-    html += "<h4 style=\"margin-top:18px\">Word goal</h4><div class=\"opt\" style=\"padding-top:0\"><label for=\"goalIn\">Target for this piece</label><input type=\"text\" inputmode=\"numeric\" id=\"goalIn\" value=\"" + (d.goal || "") + "\" placeholder=\"None\" style=\"min-width:0;width:90px;height:28px;border-radius:7px;border:1px solid var(--line);background:var(--well);padding:0 8px\"></div>";
+    html += "<h4 style=\"margin-top:18px\">Word goal</h4><div class=\"opt\" style=\"padding-top:0\"><span>" + (d.goal ? (d.goalType === "limit" ? "Limit: at most " : "Target: ") + d.goal.toLocaleString() + " words" : "No goal") + "</span><button class=\"btn sm\" id=\"goalOpen\">" + (d.goal ? "Change…" : "Set…") + "</button></div>";
     $("tabStats").innerHTML = html;
   }
   function showPanel(tab) {
@@ -1066,7 +1164,7 @@
      ================================================================ */
   function openModal(id) { closeModals(); $("scrim").hidden = false; $(id).hidden = false; }
   function closeModals() {
-    ["tplModal", "exportModal", "askModal", "settingsModal", "helpModal", "palette"].forEach(function (m) { $(m).hidden = true; });
+    ["tplModal", "exportModal", "askModal", "settingsModal", "helpModal", "palette", "goalModal", "keysModal"].forEach(function (m) { $(m).hidden = true; });
     $("scrim").hidden = true;
   }
   function ask(title, text, buttons) {
@@ -1102,6 +1200,8 @@
       ["Focus mode", "focus", MOD + "⇧F"], ["Typewriter scrolling", "typewriter", MOD + "⇧T"], ["Toggle library", "toggle-side"], ["Toggle side panel", "toggle-panel"],
       ["Light theme", "theme:light"], ["Dark theme", "theme:dark"], ["Match system theme", "theme:system"],
       ["Add character", "cast-add"], ["Back and forth", "pingpong"], ["Show outline", "tab:outline"], ["Show stats", "tab:stats"],
+      ["Move selection to side notes", "notes:move", MOD + "⇧M"], ["Copy selection to side notes", "notes:copy", MOD + "⇧J"],
+      ["Word goal or limit…", "goal", MOD + "⇧G"], ["Keyboard shortcuts", "keys", MOD + "/"],
       ["Settings", "settings"], ["How Inkling works", "help"]
     ].map(function (c) { return { g: "Command", label: c[0], act: c[1], k: c[2] || "" }; });
     d.cast.forEach(function (c, i) { list.unshift({ g: "Cast", label: "Speak as " + c.name, act: "speak:" + i, k: i < 9 ? "Alt+" + (i + 1) : "" }); });
@@ -1132,6 +1232,164 @@
   }
 
   /* ================================================================
+     Side notes: lines lifted out of the page, kept per piece
+     ================================================================ */
+  function selectionBlocks() {
+    var c = caretInfo();
+    if (!c || c.collapsed) return null;
+    var out = [], n = c.block;
+    for (;;) {
+      var t = n.textContent, a = n === c.block ? c.a : 0, b = n === c.endBlock ? c.b : t.length;
+      var x = t.slice(a, b).trim();
+      if (x) out.push({ t: n.dataset.t, x: x });
+      if (n === c.endBlock || !n.nextElementSibling) break;
+      n = n.nextElementSibling;
+    }
+    return out;
+  }
+  function toNotes(move) {
+    restoreSel();
+    var bl = selectionBlocks();
+    if (!bl || !bl.length) { toast("Select some text first, then send it to side notes"); return; }
+    var d = cur(), note = { id: uid(), blocks: bl, mode: d.mode, at: now() };
+    d.notes = d.notes || [];
+    d.notes.unshift(note);
+    if (move) { document.execCommand("delete"); ensureBlocks(); decorateSoon(); }
+    hideBubble();
+    markDirty();
+    showNotes(note.id);
+    toast(move ? "Moved to side notes" : "Copied to side notes", move ? "Undo" : null, move ? function () {
+      editor.focus(); document.execCommand("undo");
+      d.notes = d.notes.filter(function (x) { return x.id !== note.id; });
+      renderNotes(); ensureBlocks(); decorateSoon(); markDirty();
+    } : null);
+  }
+  function showNotes(flashId) {
+    var s = state.settings;
+    if (!s.panel) { s.panel = true; }
+    if (s.notesHidden) s.notesHidden = false;
+    applyChrome(); saveSettings();
+    renderNotes(flashId);
+  }
+  function noteText(n) { return n.blocks.map(function (b) { return b.x; }).join("\n"); }
+  function renderNotes(flashId) {
+    var d = cur(), notes = (d && d.notes) || [];
+    $("notesCount").textContent = notes.length ? "· " + notes.length : "";
+    if (!notes.length) {
+      $("noteList").innerHTML = "<li class=\"notes-empty\">Cut lines, ideas, research. Select text in your writing and press " + MOD + "⇧M to move it here, or " + MOD + "⇧J to copy it. You can also right-click a selection.</li>";
+      return;
+    }
+    $("noteList").innerHTML = notes.map(function (n) {
+      var from = n.mode === "free" ? "Jotted" : "From " + MODE_NAME[n.mode].toLowerCase();
+      return "<li class=\"note from-" + n.mode + (n.id === flashId ? " flash" : "") + "\" data-nid=\"" + n.id + "\">" +
+        "<div class=\"note-text\" contenteditable=\"plaintext-only\" spellcheck=\"true\">" + esc(noteText(n)) + "</div>" +
+        "<div class=\"note-foot\"><span>" + from + " · " + relTime(new Date(n.at)) + "</span>" +
+        "<button data-nact=\"insert\" title=\"Put it back at the cursor\">Insert</button><button data-nact=\"copy\">Copy</button><button data-nact=\"del\">Delete</button></div></li>";
+    }).join("");
+  }
+  function noteById(id) { return (cur().notes || []).filter(function (n) { return n.id === id; })[0]; }
+  function insertNote(n) {
+    var d = cur();
+    restoreSel();
+    var b = curBlock() || editor.lastElementChild;
+    var nodes = n.blocks.map(function (x) { return makeBlock({ t: n.mode === d.mode ? x.t : mapType(n.mode === "free" ? DEFAULT_TYPE[d.mode] : x.t, d.mode), x: x.x }); });
+    var anchor = b;
+    nodes.forEach(function (x) { anchor.after(x); anchor = x; });
+    if (!b.textContent) b.remove();
+    var last = nodes[nodes.length - 1];
+    setSel(last, last.textContent.length);
+    afterStructural();
+    toast("Inserted from side notes");
+  }
+  function addJot() {
+    var v = $("noteInput").value.trim();
+    if (!v) return;
+    var d = cur(), note = { id: uid(), mode: "free", at: now(), blocks: v.split(/\n/).map(function (l) { return { t: "p", x: l }; }) };
+    d.notes = d.notes || [];
+    d.notes.unshift(note);
+    $("noteInput").value = "";
+    markDirty(); renderNotes(note.id);
+  }
+
+  /* floating toolbar over a selection */
+  var bubbleTimer = null, mouseIsDown = false;
+  function hideBubble() { $("bubble").hidden = true; }
+  function updateBubble() {
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(function () {
+      var s = getSelection(), el = $("bubble");
+      if (mouseIsDown || state.settings.focus || !s.rangeCount || s.isCollapsed || !editor.contains(s.anchorNode) || !s.toString().trim()) { el.hidden = true; return; }
+      var r = s.getRangeAt(0).getBoundingClientRect();
+      if (!r.width && !r.height) { el.hidden = true; return; }
+      var d = cur(), html = "<button class=\"q\" data-b=\"quote\" title=\"Quote\">“ ”</button>";
+      if (d.cast.length) {
+        html += "<span class=\"bsep\"></span>";
+        d.cast.slice(0, 6).forEach(function (c, i) {
+          html += "<button data-b=\"speak:" + i + "\" style=\"--who:var(--" + c.color + ")\" title=\"" + esc(c.name) + " says this\"><span class=\"key\">" + esc(c.key) + "</span></button>";
+        });
+      }
+      html += "<span class=\"bsep\"></span><button data-b=\"notes:move\" title=\"" + MOD + "⇧M\">Move to notes</button><button data-b=\"notes:copy\" title=\"" + MOD + "⇧J\">Copy to notes</button>";
+      el.innerHTML = html;
+      el.hidden = false;
+      var w = el.offsetWidth, h = el.offsetHeight;
+      var top = r.top - h - 10;
+      if (top < 60) top = r.bottom + 10;
+      el.style.top = top + "px";
+      el.style.left = Math.max(10, Math.min(window.innerWidth - w - 10, r.left + r.width / 2 - w / 2)) + "px";
+    }, 120);
+  }
+
+  /* keyboard shortcuts page and word goal */
+  function openKeys() {
+    var mac = host.platform === "darwin";
+    var C = mac ? "⌘" : "Ctrl", A = mac ? "⌥" : "Alt", S = mac ? "⇧" : "Shift", W = mac ? "⌥ or Ctrl" : "Ctrl";
+    var k = function () { return Array.prototype.map.call(arguments, function (x) { return "<kbd>" + x + "</kbd>"; }).join(" + "); };
+    var groups = [
+      ["Dialogue", [[k(A, "1–9"), "Speak as cast member 1–9"], [k("Enter"), "Finish the line and add the tag"], [k("Esc"), "Cancel an open line"],
+        [k(C, "'"), "Quote the selection “ ”"], [k(C, S, "'"), "Single quotes ‘ ’"], [k(C, S, "B"), "Back and forth on/off"], [k(C, S, "C"), "Add a character"]]],
+      ["Moving and selecting", [[k(W, "←") + " " + k("→"), "Jump one word"], [k(W, S, "←") + " " + k("→"), "Select one word at a time"],
+        [k(W, "Backspace"), "Delete the word before the cursor"], [k(W, "Delete"), "Delete the word after the cursor"]]],
+      ["Typing", [[k("\"") + " " + k("(") + " " + k("["), "Types both halves, cursor in between"], ["with text selected", "Wraps the selection instead"],
+        [k("Backspace"), "Inside an empty pair, removes both"]]],
+      ["Side notes", [[k(C, S, "M"), "Move the selection to side notes"], [k(C, S, "J"), "Copy the selection to side notes"], ["right-click", "Same options on any selection"]]],
+      ["Script", [[k(C, "1") + " … " + k("6"), "Scene, Action, Character, Paren, Dialogue, Transition"], [k("Tab") + " " + k(S, "Tab"), "Next / previous element"],
+        [k(C, S, "1") + " " + k("2") + " " + k("3"), "Prose, Script, Poem"]]],
+      ["Pieces", [[k(C, "N"), "New prose"], [k(C, S, "N"), "New script"], [k(C, A, "N"), "New poem"], [k(C, "T"), "Templates"],
+        [k(C, "O"), "Open or import"], [k(C, "P"), "Export PDF"], [k(C, S, "D"), "Duplicate"], [k(C, S, "G"), "Word goal or limit"]]],
+      ["View", [[k(C, "K"), "Command palette"], [k(C, S, "F"), "Focus mode"], [k(C, S, "T"), "Typewriter scrolling"], [k(C, "\\"), "Show / hide library"],
+        [k(C, A, "\\"), "Show / hide side panel"], [k(C, "/"), "This page"], [k(C, "+") + " " + k(C, "−"), "Zoom"]]]
+    ];
+    $("keysBody").innerHTML = groups.map(function (g) {
+      return "<div><h3>" + g[0] + "</h3><table class=\"keys\">" + g[1].map(function (r) { return "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td></tr>"; }).join("") + "</table></div>";
+    }).join("");
+    openModal("keysModal");
+  }
+  var GOAL_PRESETS = [
+    [50, "Mini saga", "limit"], [100, "Drabble", "limit"], [300, ""], [500, ""], [1000, "Flash", "limit"],
+    [2500, ""], [7500, "Short story"], [17500, "Novelette"], [50000, "Novel"]
+  ];
+  function openGoal() {
+    collect();
+    $("goalNum").value = cur().goal || "";
+    renderGoal();
+    openModal("goalModal");
+    $("goalNum").focus();
+  }
+  function renderGoal() {
+    var d = cur(), words = wordCount(d), limit = d.goalType === "limit";
+    document.querySelectorAll("[data-gt]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.gt === (limit ? "limit" : "target"))); });
+    $("goalPresets").innerHTML = GOAL_PRESETS.map(function (p) {
+      return "<button data-n=\"" + p[0] + "\"" + (p[2] ? " data-type=\"" + p[2] + "\"" : "") + " aria-pressed=\"" + (d.goal === p[0]) + "\">" + p[0].toLocaleString() + (p[1] ? "<span>" + p[1] + "</span>" : "") + "</button>";
+    }).join("");
+    var msg;
+    if (d.goal && limit) msg = words > d.goal ? "<b>" + (words - d.goal).toLocaleString() + " words over</b> the limit. The extra text is marked in red." : "<b>" + (d.goal - words).toLocaleString() + " words</b> left before the limit.";
+    else if (d.goal) msg = words >= d.goal ? "<b>Goal reached.</b> " + words.toLocaleString() + " words." : "<b>" + (d.goal - words).toLocaleString() + " words</b> to go.";
+    else msg = "No goal set. You’re at " + words.toLocaleString() + " words.";
+    $("goalPreview").innerHTML = msg;
+  }
+  function goalChanged() { markDirty(); renderGoal(); decorateSoon(); renderStatus(); renderPanelSoon(); }
+
+  /* ================================================================
      Chrome: theme, panels, focus
      ================================================================ */
   function applyTheme() {
@@ -1148,6 +1406,10 @@
     win.classList.toggle("focus", !!s.focus);
     $("focusBtn").setAttribute("aria-pressed", String(!!s.focus));
     document.documentElement.style.setProperty("--scale", s.scale || 1);
+    if (s.notesh) $("panel").style.setProperty("--notesh", s.notesh + "px");
+    $("notes").classList.toggle("collapsed", !!s.notesHidden);
+    $("notesToggle").textContent = s.notesHidden ? "Show" : "Hide";
+    $("notesToggle").setAttribute("aria-expanded", String(!s.notesHidden));
   }
   function toggleFocus() {
     var s = state.settings;
@@ -1155,6 +1417,7 @@
     if (s.focus) { s._side = s.side; s._panel = s.panel; s.side = false; s.panel = false; }
     else { s.side = s._side !== false; s.panel = s._panel !== false; }
     applyChrome(); saveSettings();
+    hideBubble();
     editor.focus({ preventScroll: true });
     toast(s.focus ? "Focus mode. " + MOD + "⇧F to leave" : "Focus mode off");
   }
@@ -1174,24 +1437,29 @@
     var d = cur();
     $("title").value = d.title || "";
     host.setTitle(d.title || "Untitled");
-    document.querySelectorAll(".seg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.mode === d.mode)); });
+    document.querySelectorAll(".seg button[data-mode]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.mode === d.mode)); });
     document.querySelectorAll("[data-when]").forEach(function (el) { el.hidden = el.dataset.when !== d.mode; });
-    renderEditor(); renderCastStrip(); renderLibrary(); renderStatus(); syncTypeButtons();
+    renderEditor(); renderCastStrip(); renderLibrary(); renderStatus(); syncTypeButtons(); renderNotes();
     showPanel(state.settings.tab);
   }
   function renderStatus() {
     var d = cur();
     if (!d) return;
     var words = wordCount(d);
-    $("stWords").innerHTML = "<b>" + words.toLocaleString() + "</b> words";
+    var limit = d.goal && d.goalType === "limit", over = limit ? words - d.goal : 0;
+    $("stWords").innerHTML = over > 0 ? "<span class=\"over-n\">" + words.toLocaleString() + "</span> words" : "<b>" + words.toLocaleString() + "</b> words";
     $("stGoalWrap").hidden = !d.goal;
     if (d.goal) {
+      var bar = $("stGoal").parentNode;
+      bar.className = "goal-bar" + (limit ? " limit" + (over > 0 ? " over" : words >= d.goal * 0.9 ? " near" : "") : "");
       $("stGoal").style.width = Math.min(100, words / d.goal * 100) + "%";
-      $("stGoalTxt").textContent = Math.min(100, Math.round(words / d.goal * 100)) + "% of " + d.goal.toLocaleString();
+      $("stGoalTxt").innerHTML = limit
+        ? (over > 0 ? "<span class=\"over-n\">" + over.toLocaleString() + " over</span> the " + d.goal.toLocaleString() + " limit" : (d.goal - words).toLocaleString() + " left of " + d.goal.toLocaleString() + " max")
+        : Math.min(100, Math.round(words / d.goal * 100)) + "% of " + d.goal.toLocaleString();
     }
     var b = curBlock();
     $("stExtra").textContent = d.mode === "script" ? scriptPages(d).toFixed(1) + " pages · " + (b ? TYPE_NAME[b.dataset.t] : "")
-      : d.mode === "poem" ? d.blocks.filter(function (x) { return x.x.trim(); }).length + " lines" : Math.max(1, Math.round(words / 230)) + " min read";
+      : d.mode === "poem" ? d.blocks.filter(function (x) { return x.x.trim(); }).length + " lines · " + d.blocks.reduce(function (n, x) { return n + syllables(x.x); }, 0) + " syllables" : Math.max(1, Math.round(words / 230)) + " min read";
     var s = words - (sessionStart[d.id] || 0);
     $("stSession").textContent = s ? (s > 0 ? "+" : "") + s.toLocaleString() + " this session" : "";
     $("stSaved").innerHTML = "<span class=\"dot" + (savedFlag ? "" : " dirty") + "\"></span>" + (savedFlag ? "Saved" : "Saving…");
@@ -1241,6 +1509,9 @@
       case "theme": state.settings.theme = arg; applyTheme(); saveSettings(); break;
       case "settings": openSettings(); break;
       case "help": openModal("helpModal"); break;
+      case "keys": openKeys(); break;
+      case "goal": openGoal(); break;
+      case "notes": toNotes(arg === "move"); break;
       case "palette": openPalette(); break;
       case "choose-folder": chooseFolder(); break;
       case "doc": open(arg); break;
@@ -1255,7 +1526,7 @@
   }
   function openSettings() {
     var s = state.settings;
-    $("setTheme").value = s.theme; $("setSmart").checked = !!s.smart; $("setTag").value = s.tag; $("setTense").value = s.tense;
+    $("setTheme").value = s.theme; $("setSmart").checked = !!s.smart; $("setPair").checked = s.autopair !== false; $("setTag").value = s.tag; $("setTense").value = s.tense;
     $("setAuthor").value = s.author || ""; $("setSize").value = String(s.scale || 1);
     host.folder().then(function (f) { $("setFolder").textContent = f; });
     openModal("settingsModal");
@@ -1340,21 +1611,19 @@
     editor.focus({ preventScroll: true }); setSel(p, 0);
     var sc = $("scroll"); sc.scrollTop += p.getBoundingClientRect().top - sc.getBoundingClientRect().top - 60;
   });
-  $("tabStats").addEventListener("input", function (e) { if (e.target.id === "goalIn") { cur().goal = Math.max(0, parseInt(e.target.value.replace(/\D/g, ""), 10) || 0); markDirty(); renderStatus(); } });
+  $("tabStats").addEventListener("click", function (e) { if (e.target.closest("#goalOpen")) openGoal(); });
   document.querySelectorAll(".tabs button").forEach(function (b) { b.addEventListener("click", function () { showPanel(b.dataset.tab); }); });
 
   // editor
   editor.addEventListener("beforeinput", function (e) {
     var it = e.inputType;
     if (it === "insertParagraph" || it === "insertLineBreak") { e.preventDefault(); handleEnter(); return; }
-    if (it === "insertText" && state.settings.smart && (e.data === "\"" || e.data === "'")) {
-      var c = caretInfo(); if (!c) return;
-      var prev = c.a > 0 ? c.block.textContent[c.a - 1] : "";
-      var opening = !prev || /[\s(\[{“‘—–-]/.test(prev);
+    if (it === "insertText" && e.data && e.data.length === 1 && "\"'“‘”’()[]".indexOf(e.data) >= 0) {
       e.preventDefault();
-      if (!c.collapsed) document.execCommand("delete");
-      insertText(e.data === "\"" ? (opening ? "“" : "”") : (opening ? "‘" : "’"));
+      if (!typeChar(e.data)) insertText(e.data);
+      return;
     }
+    if (it === "deleteContentBackward" && backspacePair()) { e.preventDefault(); return; }
   });
   editor.addEventListener("input", function (e) {
     if (e.inputType === "insertParagraph" || e.inputType === "insertFromPaste" || e.inputType === "historyUndo" || e.inputType === "historyRedo") ensureBlocks();
@@ -1372,6 +1641,7 @@
   });
   editor.addEventListener("keydown", function (e) {
     var d = cur(), mod = e.ctrlKey || e.metaKey;
+    if (wordKeys(e)) { decorateSoon(); markDirty(); return; }
     if (e.key === "Tab" && d.mode === "script") {
       e.preventDefault();
       var b = curBlock(); if (!b) return;
@@ -1385,6 +1655,8 @@
     if (mod && (e.key === "'" || e.key === "\"")) { e.preventDefault(); action(e.shiftKey ? "squote" : "quote"); return; }
     if (e.altKey && /^Digit[1-9]$/.test(e.code)) { e.preventDefault(); action("speak:" + (+e.code.slice(5) - 1)); return; }
     if (mod && /^[1-6]$/.test(e.key)) { e.preventDefault(); setType(CYCLE[+e.key - 1]); }
+    if (mod && e.shiftKey && e.key.toLowerCase() === "m") { e.preventDefault(); toNotes(true); }
+    if (mod && e.shiftKey && e.key.toLowerCase() === "j") { e.preventDefault(); toNotes(false); }
   });
   editor.addEventListener("paste", function (e) {
     var text = e.clipboardData.getData("text/plain");
@@ -1420,7 +1692,7 @@
   // title bar & library
   $("title").addEventListener("input", function () { cur().title = this.value; host.setTitle(this.value); markDirty(); });
   $("title").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); editor.focus(); } });
-  document.querySelectorAll(".seg button").forEach(function (b) { b.addEventListener("click", function () { switchMode(b.dataset.mode); }); });
+  document.querySelectorAll(".seg button[data-mode]").forEach(function (b) { b.addEventListener("click", function () { switchMode(b.dataset.mode); }); });
   $("themeBtn").addEventListener("click", function () { action("theme:" + (isDark() ? "light" : "dark")); });
   $("focusBtn").addEventListener("click", toggleFocus);
   $("sideBtn").addEventListener("click", function () { action("toggle-side"); });
@@ -1454,6 +1726,7 @@
   $("exportModal").addEventListener("click", function (e) { var t = e.target.closest("[data-export]"); if (t) exportAs(t.dataset.export); });
   $("setTheme").addEventListener("change", function () { action("theme:" + this.value); });
   $("setSmart").addEventListener("change", function () { state.settings.smart = this.checked; saveSettings(); });
+  $("setPair").addEventListener("change", function () { state.settings.autopair = this.checked; saveSettings(); });
   $("setTag").addEventListener("change", function () { state.settings.tag = this.value; saveSettings(); });
   $("setTense").addEventListener("change", function () { state.settings.tense = this.value; saveSettings(); renderCastStrip(); });
   $("setAuthor").addEventListener("input", function () { state.settings.author = this.value; saveSettings(); });
@@ -1468,11 +1741,77 @@
   });
   $("palList").addEventListener("click", function (e) { var li = e.target.closest("[data-pi]"); if (li) runPalette(+li.dataset.pi); });
   document.addEventListener("keydown", function (e) {
+    if (!isElectron && (e.ctrlKey || e.metaKey) && e.key === "/") { e.preventDefault(); openKeys(); }
     if (e.key === "Escape") { if (!$("scrim").hidden) closeModals(); else if (state.settings.focus) toggleFocus(); }
     if (!isElectron && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); }
     if (!isElectron && (e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "f") { e.preventDefault(); toggleFocus(); }
   });
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () { if (state.settings.theme === "system") applyTheme(); });
+
+  // side notes
+  $("noteInput").addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addJot(); } });
+  $("notesToggle").addEventListener("click", function () { state.settings.notesHidden = !state.settings.notesHidden; applyChrome(); saveSettings(); });
+  $("noteList").addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-nact]"), li = e.target.closest("[data-nid]");
+    if (!btn || !li) return;
+    var d = cur(), n = noteById(li.dataset.nid);
+    if (!n) return;
+    if (btn.dataset.nact === "insert") insertNote(n);
+    if (btn.dataset.nact === "copy") copyText(noteText(n));
+    if (btn.dataset.nact === "del") {
+      var i = d.notes.indexOf(n);
+      d.notes.splice(i, 1); renderNotes(); markDirty();
+      toast("Note deleted", "Undo", function () { d.notes.splice(i, 0, n); renderNotes(); markDirty(); });
+    }
+  });
+  $("noteList").addEventListener("mousedown", function (e) { if (e.target.closest("[data-nact=insert]")) e.preventDefault(); });
+  $("noteList").addEventListener("focusout", function (e) {
+    var li = e.target.closest("[data-nid]"); if (!li || !e.target.classList.contains("note-text")) return;
+    var n = noteById(li.dataset.nid); if (!n) return;
+    var text = e.target.innerText.replace(/\n+$/, "");
+    if (text === noteText(n)) return;
+    var lines = text.split("\n");
+    n.blocks = lines.map(function (l, i) { return { t: (n.blocks[i] || n.blocks[n.blocks.length - 1] || { t: "p" }).t, x: l }; }).filter(function (b) { return b.x.trim(); });
+    if (!n.blocks.length) cur().notes = cur().notes.filter(function (x) { return x !== n; });
+    markDirty(); renderNotes();
+  });
+  $("notesHandle").addEventListener("mousedown", function (e) {
+    e.preventDefault();
+    var panel = $("panel"), pr = panel.getBoundingClientRect();
+    function move(ev) {
+      var h = Math.max(90, Math.min(pr.height - 150, pr.bottom - ev.clientY));
+      panel.style.setProperty("--notesh", h + "px");
+      state.settings.notesh = Math.round(h);
+    }
+    function up() { document.removeEventListener("mousemove", move); document.removeEventListener("mouseup", up); saveSettings(); }
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+    if (state.settings.notesHidden) { state.settings.notesHidden = false; applyChrome(); }
+  });
+  // selection bubble
+  editor.addEventListener("mousedown", function () { mouseIsDown = true; hideBubble(); });
+  document.addEventListener("mouseup", function () { if (mouseIsDown) { mouseIsDown = false; updateBubble(); } });
+  editor.addEventListener("keyup", function (e) { if (e.shiftKey || e.key === "Shift") updateBubble(); else hideBubble(); });
+  editor.addEventListener("input", hideBubble);
+  $("scroll").addEventListener("scroll", hideBubble);
+  $("bubble").addEventListener("mousedown", function (e) { e.preventDefault(); });
+  $("bubble").addEventListener("click", function (e) { var b = e.target.closest("[data-b]"); if (b) { hideBubble(); action(b.dataset.b); } });
+  // goal + keys
+  $("stGoalBtn").addEventListener("click", openGoal);
+  $("stKeys").addEventListener("click", openKeys);
+  $("helpKeys").addEventListener("click", openKeys);
+  $("goalNum").addEventListener("input", function () { cur().goal = Math.max(0, parseInt(this.value.replace(/\D/g, ""), 10) || 0); goalChanged(); });
+  $("goalNum").addEventListener("keydown", function (e) { if (e.key === "Enter") closeModals(); });
+  $("goalClear").addEventListener("click", function () { cur().goal = 0; $("goalNum").value = ""; goalChanged(); closeModals(); });
+  document.querySelectorAll("[data-gt]").forEach(function (b) { b.addEventListener("click", function () { cur().goalType = b.dataset.gt; goalChanged(); }); });
+  $("goalPresets").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-n]"); if (!b) return;
+    var d = cur();
+    d.goal = +b.dataset.n;
+    if (b.dataset.type) d.goalType = b.dataset.type;
+    $("goalNum").value = d.goal;
+    goalChanged();
+  });
 
   host.onMenu(action);
   host.onOpenFile(function (p) { importPayloads([p]); });

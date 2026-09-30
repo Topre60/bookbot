@@ -25,6 +25,12 @@ The builds aren't signed with a paid certificate yet, so the first launch needs 
 - **Real files**: each piece is a `.inkling` file in `Documents/Inkling`, saved as you type.
   Move the library into iCloud Drive, Dropbox or OneDrive (Settings → Library folder) and it follows you
   between computers. Deleting moves a file to the Bin / Recycle Bin.
+- **Side notes** (bottom right): select lines and press `⌘/Ctrl ⇧ M` to move them out of the page, or `⌘/Ctrl ⇧ J` to copy.
+  Right-click works too, and so does the small toolbar that pops up over a selection. **Insert** puts a note back at the cursor,
+  and you can type quick notes straight into the box.
+- **Word goal or limit** (click the word count): a target to reach, or a maximum like a 100-word drabble. Text past a limit turns red.
+- **Typing helpers**: quotes and brackets close themselves (select text and type `"` to wrap it), and `Ctrl`/`⌥` + arrows moves a word at a time.
+- **Keyboard shortcuts page**: `⌘/Ctrl /`, or Help → Keyboard Shortcuts.
 - **Character notes**: each cast member has a notes field and a colour, and shows how many lines they have.
 - **Who talks most**: dialogue share per character in Stats, plus session words, reading time, pages and screen time.
 - **Outline**: scene list for scripts, section list for prose; click to jump.
@@ -48,6 +54,11 @@ The builds aren't signed with a paid certificate yet, so the first launch needs 
 | `⌘/Ctrl` + `P` | Export PDF |
 | `⌘/Ctrl` + `T` | Templates |
 | `⌘/Ctrl` + `\` | Show / hide library |
+| `Ctrl`/`⌥` + `←`/`→` | Jump a word (add `Shift` to select word by word) |
+| `Ctrl`/`⌥` + `Backspace` | Delete the previous word |
+| `⌘/Ctrl` + `⇧` + `M` / `J` | Move / copy the selection to side notes |
+| `⌘/Ctrl` + `⇧` + `G` | Word goal or limit |
+| `⌘/Ctrl` + `/` | All keyboard shortcuts |
 
 ## Develop
 

@@ -102,6 +102,26 @@ function createWindow() {
     if (/^https?:/.test(url)) shell.openExternal(url);
     return { action: "deny" };
   });
+  // right-click: spelling fixes, clipboard, and the writing actions for a selection
+  win.webContents.on("context-menu", (_e, p) => {
+    const items = [];
+    if (p.misspelledWord) {
+      p.dictionarySuggestions.slice(0, 5).forEach((w) => items.push({ label: w, click: () => win.webContents.replaceMisspelling(w) }));
+      if (!p.dictionarySuggestions.length) items.push({ label: "No suggestions", enabled: false });
+      items.push({ label: "Add to Dictionary", click: () => win.webContents.session.addWordToSpellCheckerDictionary(p.misspelledWord) });
+      items.push({ type: "separator" });
+    }
+    const hasSel = !!(p.selectionText && p.selectionText.trim());
+    if (hasSel && p.isEditable) {
+      items.push({ label: "Quote Selection “ ”", click: send("quote") });
+      items.push({ label: "Move to Side Notes", accelerator: "CmdOrCtrl+Shift+M", click: send("notes:move") });
+      items.push({ label: "Copy to Side Notes", accelerator: "CmdOrCtrl+Shift+J", click: send("notes:copy") });
+      items.push({ type: "separator" });
+    }
+    if (p.isEditable) items.push({ role: "cut", enabled: hasSel }, { role: "copy", enabled: hasSel }, { role: "paste" }, { role: "selectAll" });
+    else if (hasSel) items.push({ role: "copy" });
+    if (items.length) Menu.buildFromTemplate(items).popup({ window: win });
+  });
   win.webContents.on("will-navigate", (e, url) => {
     if (!url.startsWith("file:")) { e.preventDefault(); shell.openExternal(url); }
   });
@@ -175,6 +195,10 @@ function buildMenu() {
         { label: "Single Quotes ‘ ’", accelerator: "CmdOrCtrl+Shift+'", click: send("squote") },
         { label: "Em Dash —", accelerator: "Alt+-", click: send("ins:—") },
         { type: "separator" },
+        { label: "Move Selection to Side Notes", accelerator: "CmdOrCtrl+Shift+M", click: send("notes:move") },
+        { label: "Copy Selection to Side Notes", accelerator: "CmdOrCtrl+Shift+J", click: send("notes:copy") },
+        { type: "separator" },
+        { label: "Word Goal or Limit…", accelerator: "CmdOrCtrl+Shift+G", click: send("goal") },
         { label: "Command Palette…", accelerator: "CmdOrCtrl+K", click: send("palette") },
       ],
     },
@@ -225,6 +249,7 @@ function buildMenu() {
       role: "help",
       submenu: [
         { label: "How Inkling Works", accelerator: "F1", click: send("help") },
+        { label: "Keyboard Shortcuts", accelerator: "CmdOrCtrl+/", click: send("keys") },
         { label: "Inkling on GitHub", click: () => shell.openExternal("https://github.com/Topre60/bookbot") },
       ],
     },

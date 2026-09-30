@@ -17,8 +17,13 @@ Open `index.html` in a browser, or host the repo on GitHub Pages / Netlify
 full-screen like an app and keeps working offline.
 
 Phone-specific touches: large touch targets, undo/redo buttons (no Ctrl+Z on a
-phone keyboard), a **Done** button to hide the keyboard, and a header that
-collapses while you type.
+phone keyboard), **‹ Word / Word ›** buttons that select a word at a time and
+**⌫ Word** to delete one, a **Done** button to hide the keyboard, and a toolbar
+that moves to the top of the screen while you type so the keyboard can't cover it.
+
+Both versions: quotes and brackets close themselves as you type (select text and
+type `"` to wrap it), a word goal can be a target or a limit (tap the word count),
+and poem lines show a syllable count.
 
 ## What it does
 

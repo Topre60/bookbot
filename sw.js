@@ -1,5 +1,5 @@
 // Inkling offline cache: app shell first, fonts cached as they load.
-const CACHE = "inkling-v2";
+const CACHE = "inkling-v3";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-180.png", "icons/icon-maskable.png"];
 
 self.addEventListener("install", (e) => {
